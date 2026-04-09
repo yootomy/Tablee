@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model activity_logs {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id        String   @db.Uuid
+  actor_profile_id String?  @db.Uuid
+  entity_type      String
+  entity_id        String?  @db.Uuid
+  action           String
+  metadata         Json     @default("{}")
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  families         families @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model families {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                       String
+  created_by_profile_id      String                       @db.Uuid
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  activity_logs              activity_logs[]
+  profiles                   profiles                     @relation(fields: [created_by_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  family_context_preferences family_context_preferences[]
+  family_invites             family_invites[]
+  family_members             family_members[]
+  locations                  locations[]
+  meal_plans                 meal_plans[]
+  profile_preferences        profile_preferences[]
+  recipes                    recipes[]
+  shopping_items             shopping_items[]
+}
+
+model family_context_preferences {
+  id                        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id                String     @db.Uuid
+  family_id                 String     @db.Uuid
+  last_selected_location_id String?    @db.Uuid
+  created_at                DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime   @default(now()) @db.Timestamptz(6)
+  families                  families   @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles                  profiles   @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations                 locations? @relation(fields: [last_selected_location_id], references: [id], onUpdate: NoAction, map: "fk_fcp_location")
+
+  @@unique([profile_id, family_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model family_invites {
+  id                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id             String      @db.Uuid
+  created_by_profile_id String      @db.Uuid
+  role_to_grant         family_role @default(member)
+  code_hash             String      @unique
+  code_last4            String
+  max_uses              Int         @default(1)
+  uses_count            Int         @default(0)
+  expires_at            DateTime?   @db.Timestamptz(6)
+  revoked_at            DateTime?   @db.Timestamptz(6)
+  created_at            DateTime    @default(now()) @db.Timestamptz(6)
+  profiles              profiles    @relation(fields: [created_by_profile_id], references: [id], onUpdate: NoAction)
+  families              families    @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([code_hash], map: "idx_family_invites_code_hash")
+}
+
+model family_members {
+  id                                                                              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id                                                                       String           @db.Uuid
+  profile_id                                                                      String           @db.Uuid
+  role                                                                            family_role      @default(member)
+  invited_by_profile_id                                                           String?          @db.Uuid
+  joined_at                                                                       DateTime         @default(now()) @db.Timestamptz(6)
+  created_at                                                                      DateTime         @default(now()) @db.Timestamptz(6)
+  families                                                                        families         @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles_family_members_invited_by_profile_idToprofiles                         profiles?        @relation("family_members_invited_by_profile_idToprofiles", fields: [invited_by_profile_id], references: [id], onUpdate: NoAction)
+  profiles_family_members_profile_idToprofiles                                    profiles         @relation("family_members_profile_idToprofiles", fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  meal_plans_meal_plans_family_id_created_by_profile_idTofamily_members           meal_plans[]     @relation("meal_plans_family_id_created_by_profile_idTofamily_members")
+  meal_plans_meal_plans_family_id_responsible_profile_idTofamily_members          meal_plans[]     @relation("meal_plans_family_id_responsible_profile_idTofamily_members")
+  recipes_recipes_family_id_created_by_profile_idTofamily_members                 recipes[]        @relation("recipes_family_id_created_by_profile_idTofamily_members")
+  recipes_recipes_family_id_updated_by_profile_idTofamily_members                 recipes[]        @relation("recipes_family_id_updated_by_profile_idTofamily_members")
+  shopping_items_shopping_items_family_id_completed_by_profile_idTofamily_members shopping_items[] @relation("shopping_items_family_id_completed_by_profile_idTofamily_members")
+  shopping_items_shopping_items_family_id_created_by_profile_idTofamily_members   shopping_items[] @relation("shopping_items_family_id_created_by_profile_idTofamily_members")
+
+  @@unique([family_id, profile_id])
+  @@index([profile_id], map: "idx_family_members_profile_id")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model locations {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id                  String                       @db.Uuid
+  name                       String
+  archived_at                DateTime?                    @db.Timestamptz(6)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  family_context_preferences family_context_preferences[]
+  families                   families                     @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  meal_plans                 meal_plans[]
+  shopping_items             shopping_items[]
+
+  @@unique([family_id, id])
+  @@index([family_id, archived_at], map: "idx_locations_family_archived")
+}
+
+model meal_plans {
+  id                                                                         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id                                                                  String           @db.Uuid
+  recipe_id                                                                  String?          @db.Uuid
+  location_id                                                                String           @db.Uuid
+  responsible_profile_id                                                     String?          @db.Uuid
+  meal_date                                                                  DateTime         @db.Date
+  meal_slot                                                                  meal_slot
+  status                                                                     meal_plan_status @default(planned)
+  title                                                                      String
+  notes                                                                      String?
+  created_by_profile_id                                                      String           @db.Uuid
+  created_at                                                                 DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at                                                                 DateTime         @default(now()) @db.Timestamptz(6)
+  family_members_meal_plans_family_id_created_by_profile_idTofamily_members  family_members   @relation("meal_plans_family_id_created_by_profile_idTofamily_members", fields: [family_id, created_by_profile_id], references: [family_id, profile_id], onUpdate: NoAction)
+  families                                                                   families         @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations                                                                  locations        @relation(fields: [family_id, location_id], references: [family_id, id], onUpdate: NoAction)
+  recipes                                                                    recipes?         @relation(fields: [family_id, recipe_id], references: [family_id, id], onDelete: SetNull, onUpdate: NoAction)
+  family_members_meal_plans_family_id_responsible_profile_idTofamily_members family_members?  @relation("meal_plans_family_id_responsible_profile_idTofamily_members", fields: [family_id, responsible_profile_id], references: [family_id, profile_id], onDelete: SetNull, onUpdate: NoAction)
+  shopping_items                                                             shopping_items[]
+
+  @@unique([family_id, id])
+  @@index([family_id, meal_date, meal_slot], map: "idx_meal_plans_family_date_slot")
+  @@index([family_id, location_id, meal_date], map: "idx_meal_plans_family_location_date")
+}
+
+model profile_preferences {
+  profile_id       String    @id @db.Uuid
+  active_family_id String?   @db.Uuid
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  families         families? @relation(fields: [active_family_id], references: [id], onUpdate: NoAction)
+  profiles         profiles  @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model profiles {
+  id                                                            String                       @id @db.Uuid
+  display_name                                                  String
+  created_at                                                    DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime                     @default(now()) @db.Timestamptz(6)
+  families                                                      families[]
+  family_context_preferences                                    family_context_preferences[]
+  family_invites                                                family_invites[]
+  family_members_family_members_invited_by_profile_idToprofiles family_members[]             @relation("family_members_invited_by_profile_idToprofiles")
+  family_members_family_members_profile_idToprofiles            family_members[]             @relation("family_members_profile_idToprofiles")
+  profile_preferences                                           profile_preferences?
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recipe_ingredients {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipe_id         String   @db.Uuid
+  position          Int
+  name              String
+  quantity_numeric  Decimal? @db.Decimal(10, 2)
+  unit              String?
+  raw_quantity_text String?
+  note              String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  recipes           recipes  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([recipe_id, position])
+  @@index([recipe_id, position], map: "idx_recipe_ingredients_recipe_pos")
+}
+
+model recipe_steps {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipe_id   String   @db.Uuid
+  position    Int
+  instruction String
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  recipes     recipes  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([recipe_id, position])
+  @@index([recipe_id, position], map: "idx_recipe_steps_recipe_pos")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model recipes {
+  id                                                                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id                                                              String               @db.Uuid
+  created_by_profile_id                                                  String               @db.Uuid
+  updated_by_profile_id                                                  String?              @db.Uuid
+  title                                                                  String
+  description                                                            String?
+  prep_time_minutes                                                      Int?
+  cook_time_minutes                                                      Int?
+  servings                                                               Int?
+  source_url                                                             String?
+  archived_at                                                            DateTime?            @db.Timestamptz(6)
+  created_at                                                             DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                                                             DateTime             @default(now()) @db.Timestamptz(6)
+  meal_plans                                                             meal_plans[]
+  recipe_ingredients                                                     recipe_ingredients[]
+  recipe_steps                                                           recipe_steps[]
+  family_members_recipes_family_id_created_by_profile_idTofamily_members family_members       @relation("recipes_family_id_created_by_profile_idTofamily_members", fields: [family_id, created_by_profile_id], references: [family_id, profile_id], onDelete: NoAction, onUpdate: NoAction)
+  families                                                               families             @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  family_members_recipes_family_id_updated_by_profile_idTofamily_members family_members?      @relation("recipes_family_id_updated_by_profile_idTofamily_members", fields: [family_id, updated_by_profile_id], references: [family_id, profile_id], onDelete: NoAction, onUpdate: NoAction)
+  shopping_items                                                         shopping_items[]
+
+  @@unique([family_id, id])
+  @@index([family_id, archived_at, created_at(sort: Desc)], map: "idx_recipes_family_archived_created")
+  @@index([family_id, title], map: "idx_recipes_family_title")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model shopping_items {
+  id                                                                              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id                                                                       String          @db.Uuid
+  location_id                                                                     String          @db.Uuid
+  name                                                                            String
+  quantity_numeric                                                                Decimal?        @db.Decimal(10, 2)
+  unit                                                                            String?
+  raw_quantity_text                                                               String?
+  comment                                                                         String?
+  is_completed                                                                    Boolean         @default(false)
+  created_by_profile_id                                                           String          @db.Uuid
+  completed_by_profile_id                                                         String?         @db.Uuid
+  completed_at                                                                    DateTime?       @db.Timestamptz(6)
+  source_recipe_id                                                                String?         @db.Uuid
+  source_meal_plan_id                                                             String?         @db.Uuid
+  created_at                                                                      DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                                                                      DateTime        @default(now()) @db.Timestamptz(6)
+  family_members_shopping_items_family_id_completed_by_profile_idTofamily_members family_members? @relation("shopping_items_family_id_completed_by_profile_idTofamily_members", fields: [family_id, completed_by_profile_id], references: [family_id, profile_id], onDelete: SetNull, onUpdate: NoAction)
+  family_members_shopping_items_family_id_created_by_profile_idTofamily_members   family_members  @relation("shopping_items_family_id_created_by_profile_idTofamily_members", fields: [family_id, created_by_profile_id], references: [family_id, profile_id], onUpdate: NoAction)
+  families                                                                        families        @relation(fields: [family_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  locations                                                                       locations       @relation(fields: [family_id, location_id], references: [family_id, id], onUpdate: NoAction)
+  meal_plans                                                                      meal_plans?     @relation(fields: [family_id, source_meal_plan_id], references: [family_id, id], onDelete: SetNull, onUpdate: NoAction)
+  recipes                                                                         recipes?        @relation(fields: [family_id, source_recipe_id], references: [family_id, id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([family_id, location_id, is_completed, created_at(sort: Desc)], map: "idx_shopping_items_family_loc_completed")
+  @@index([family_id, source_recipe_id], map: "idx_shopping_items_family_source_recipe")
+}
+
+enum family_role {
+  admin
+  member
+}
+
+enum meal_plan_status {
+  planned
+  done
+  canceled
+}
+
+enum meal_slot {
+  lunch
+  dinner
+}
