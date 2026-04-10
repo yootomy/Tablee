@@ -125,10 +125,8 @@
   html {
     @apply bg-background font-sans;
     min-height: 100%;
-    overflow-x: clip;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scroll-behavior: smooth;
     scroll-padding-top: 4rem;
   }
   body {
@@ -138,6 +136,7 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
   button,
   [role="button"],
