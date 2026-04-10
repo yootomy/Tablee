@@ -5,10 +5,11 @@ import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DeleteShoppingItemButton } from "@/components/forms/delete-shopping-item-button";
 import { ShoppingAddItemDialog } from "@/components/forms/shopping-add-item-dialog";
+import { ShoppingLocationSwitcher } from "@/components/forms/shopping-location-switcher";
 import { ShoppingItemToggle } from "@/components/forms/shopping-item-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, MapPin } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 
 type ShoppingPageProps = {
   searchParams: Promise<{ locationId?: string | string[] }>;
@@ -103,35 +104,13 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
         }
       >
         {locations.length > 1 ? (
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm text-white/75">
-              <MapPin className="size-4 shrink-0" />
-              <span>Lieu actif</span>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select
-                name="locationId"
-                defaultValue={selectedLocation.id}
-                className="h-11 min-w-0 rounded-full border border-white/20 bg-white/95 px-4 text-base text-foreground outline-none transition-colors focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25 sm:min-w-[13rem] md:h-9 md:text-sm"
-              >
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className={buttonVariants({
-                  size: "sm",
-                  variant: "outline",
-                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
-                })}
-              >
-                Rafraîchir la liste
-              </button>
-            </div>
-          </form>
+          <ShoppingLocationSwitcher
+            locations={locations.map((location) => ({
+              id: location.id,
+              name: location.name,
+            }))}
+            selectedLocationId={selectedLocation.id}
+          />
         ) : null}
       </AppPageHeader>
 

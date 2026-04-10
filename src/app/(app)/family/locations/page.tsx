@@ -75,18 +75,22 @@ export default async function FamilyLocationsPage() {
                 {locations.map((location) => (
                   <div
                     key={location.id}
-                    className="rounded-lg border p-3"
+                    className="rounded-2xl border border-border/80 bg-background/80 p-4"
                   >
-                    <div className="mb-2 flex items-baseline justify-between gap-2">
-                      <p className="text-sm font-medium">{location.name}</p>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {new Date(location.created_at).toLocaleDateString("fr-CH")}
-                      </span>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{location.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Ajouté le {new Date(location.created_at).toLocaleDateString("fr-CH")}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <EditLocationForm
+                          locationId={location.id}
+                          initialName={location.name}
+                        />
+                      </div>
                     </div>
-                    <EditLocationForm
-                      locationId={location.id}
-                      initialName={location.name}
-                    />
                   </div>
                 ))}
               </div>
@@ -103,8 +107,8 @@ export default async function FamilyLocationsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="mb-3 text-xs text-muted-foreground">
-              Ex : maison, studio, chalet ou autre endroit de référence.
+            <p className="mb-3 text-sm text-muted-foreground">
+              Ajoute seulement le nom utile pour les repas et les courses.
             </p>
             <CreateLocationForm />
           </CardContent>

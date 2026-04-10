@@ -31,23 +31,27 @@ export function CreateLocationForm() {
     <form
       ref={formRef}
       action={handleSubmit}
-      className="flex flex-col gap-4 sm:flex-row sm:items-end"
+      className="space-y-3"
     >
-      <div className="flex-1 space-y-2">
-        <Label htmlFor="location-name">Nom du lieu</Label>
-        <Input
-          id="location-name"
-          name="name"
-          type="text"
-          placeholder="Ex: Maison principale"
-          required
-        />
+      <div className="space-y-2">
+        <Label htmlFor="location-name" className="sr-only">
+          Nom du lieu
+        </Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="location-name"
+            name="name"
+            type="text"
+            placeholder="Ex: Maison principale"
+            required
+          />
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            {loading ? "Ajout..." : "Ajouter"}
+          </Button>
+        </div>
       </div>
-      <Button type="submit" disabled={loading}>
-        {loading ? "Ajout..." : "Ajouter un lieu"}
-      </Button>
       {error ? (
-        <p className="text-sm text-destructive sm:basis-full">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       ) : null}
     </form>
   );
