@@ -96,7 +96,7 @@ export default async function FamilyMembersPage() {
       </AppPageHeader>
 
       {/* Contenu */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Membres */}
         <Card>
           <CardHeader className="pb-3">
