@@ -36,7 +36,7 @@ export function UserMenu({ name, compact = false }: UserMenuProps) {
         <span className="hidden text-sm font-semibold md:inline">{name}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/tablee/login" })}>
           <LogOut className="size-4" />
           Se déconnecter
         </DropdownMenuItem>
