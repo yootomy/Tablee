@@ -50,6 +50,10 @@ const revokeInviteSchema = z.object({
   inviteId: z.string().uuid("L'invitation demandée est invalide"),
 });
 
+const removeMemberSchema = z.object({
+  memberId: z.string().uuid("Le membre demandé est invalide"),
+});
+
 async function persistFamily(
   profileId: string,
   name: string,
@@ -296,6 +300,163 @@ export async function revokeFamilyInvite(
   });
 
   revalidatePath("/family/members");
+
+  return { success: true };
+}
+
+export async function removeFamilyMember(
+  formData: FormData,
+): Promise<ActionResult> {
+  const { familyId, profileId } = await requireActiveFamilyAdmin();
+
+  const parsed = removeMemberSchema.safeParse({
+    memberId: formData.get("memberId"),
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const member = await prisma.family_members.findFirst({
+    where: {
+      id: parsed.data.memberId,
+      family_id: familyId,
+    },
+    select: {
+      id: true,
+      profile_id: true,
+      role: true,
+      profiles_family_members_profile_idToprofiles: {
+        select: {
+          display_name: true,
+        },
+      },
+    },
+  });
+
+  if (!member) {
+    return { success: false, error: "Ce membre est introuvable" };
+  }
+
+  if (member.profile_id === profileId) {
+    return {
+      success: false,
+      error: "Tu ne peux pas te retirer toi-même de la famille pour l'instant",
+    };
+  }
+
+  if (member.role === "admin") {
+    const adminCount = await prisma.family_members.count({
+      where: {
+        family_id: familyId,
+        role: "admin",
+      },
+    });
+
+    if (adminCount <= 1) {
+      return {
+        success: false,
+        error: "Impossible de retirer le dernier admin de la famille",
+      };
+    }
+  }
+
+  const fallbackMembership = await prisma.family_members.findFirst({
+    where: {
+      profile_id: member.profile_id,
+      family_id: { not: familyId },
+    },
+    orderBy: { joined_at: "asc" },
+    select: { family_id: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.recipes.updateMany({
+      where: {
+        family_id: familyId,
+        created_by_profile_id: member.profile_id,
+      },
+      data: {
+        created_by_profile_id: profileId,
+      },
+    });
+
+    await tx.recipes.updateMany({
+      where: {
+        family_id: familyId,
+        updated_by_profile_id: member.profile_id,
+      },
+      data: {
+        updated_by_profile_id: profileId,
+      },
+    });
+
+    await tx.meal_plans.updateMany({
+      where: {
+        family_id: familyId,
+        created_by_profile_id: member.profile_id,
+      },
+      data: {
+        created_by_profile_id: profileId,
+      },
+    });
+
+    await tx.meal_plans.updateMany({
+      where: {
+        family_id: familyId,
+        responsible_profile_id: member.profile_id,
+      },
+      data: {
+        responsible_profile_id: null,
+      },
+    });
+
+    await tx.shopping_items.updateMany({
+      where: {
+        family_id: familyId,
+        created_by_profile_id: member.profile_id,
+      },
+      data: {
+        created_by_profile_id: profileId,
+      },
+    });
+
+    await tx.shopping_items.updateMany({
+      where: {
+        family_id: familyId,
+        completed_by_profile_id: member.profile_id,
+      },
+      data: {
+        completed_by_profile_id: null,
+      },
+    });
+
+    await tx.family_context_preferences.deleteMany({
+      where: {
+        family_id: familyId,
+        profile_id: member.profile_id,
+      },
+    });
+
+    await tx.profile_preferences.updateMany({
+      where: {
+        profile_id: member.profile_id,
+        active_family_id: familyId,
+      },
+      data: {
+        active_family_id: fallbackMembership?.family_id ?? null,
+      },
+    });
+
+    await tx.family_members.delete({
+      where: {
+        id: member.id,
+      },
+    });
+  });
+
+  revalidatePath("/family/members");
+  revalidatePath("/dashboard");
 
   return { success: true };
 }

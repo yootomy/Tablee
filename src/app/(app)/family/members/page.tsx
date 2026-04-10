@@ -4,6 +4,7 @@ import { requireActiveFamily } from "@/lib/auth-utils";
 import { FamilySectionNav } from "@/components/layout/family-section-nav";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { InviteMemberForm } from "@/components/forms/invite-member-form";
+import { RemoveFamilyMemberButton } from "@/components/forms/remove-family-member-button";
 import { RevokeFamilyInviteButton } from "@/components/forms/revoke-family-invite-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,7 +16,7 @@ function formatRole(role: "admin" | "member") {
 }
 
 export default async function FamilyMembersPage() {
-  const { familyId, role } = await requireActiveFamily();
+  const { familyId, role, profileId } = await requireActiveFamily();
 
   const [family, members, invites] = await Promise.all([
     prisma.families.findUnique({
@@ -117,20 +118,32 @@ export default async function FamilyMembersPage() {
               <ul className="divide-y">
                 {sortedMembers.map((member) => (
                   <li key={member.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {member.profiles_family_members_profile_idToprofiles.display_name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {member.profiles_family_members_profile_idToprofiles.email}
-                        {member.profiles_family_members_invited_by_profile_idToprofiles
-                          ? ` • invité par ${member.profiles_family_members_invited_by_profile_idToprofiles.display_name}`
-                          : ""}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">
+                            {member.profiles_family_members_profile_idToprofiles.display_name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {member.profiles_family_members_profile_idToprofiles.email}
+                            {member.profiles_family_members_invited_by_profile_idToprofiles
+                              ? ` • invité par ${member.profiles_family_members_invited_by_profile_idToprofiles.display_name}`
+                              : ""}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {formatRole(member.role)}
+                        </span>
+                      </div>
+                      {role === "admin" && member.profile_id !== profileId ? (
+                        <div className="mt-2">
+                          <RemoveFamilyMemberButton
+                            memberId={member.id}
+                            memberName={member.profiles_family_members_profile_idToprofiles.display_name}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {formatRole(member.role)}
-                    </span>
                   </li>
                 ))}
               </ul>
