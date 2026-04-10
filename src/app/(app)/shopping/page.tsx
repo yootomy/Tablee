@@ -38,9 +38,9 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
   if (locations.length === 0) {
     return (
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
-          <p className="text-xs font-medium text-primary">Courses</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Liste de courses</h1>
+        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-4 text-white shadow-lg sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Courses</p>
+          <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Liste de courses</h1>
         </div>
         <EmptyState
           title="Aucun lieu disponible"
@@ -82,36 +82,36 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header compact */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
-        <p className="text-xs font-medium text-primary">Courses</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{selectedLocation.name}</h1>
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-4 text-white shadow-lg sm:p-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Courses</p>
+        <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{selectedLocation.name}</h1>
         <div className="mt-2 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
             <ShoppingCart className="size-3.5" />
             {pendingItems.length} à acheter
           </span>
           {completedItems.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-1 text-xs text-white">
               {completedItems.length} acheté{completedItems.length > 1 ? "s" : ""}
             </span>
           ) : null}
         </div>
         {locations.length > 1 ? (
           <form className="mt-3 flex items-center gap-2">
-            <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+            <MapPin className="size-3.5 shrink-0 text-white/70" />
             <select
               name="locationId"
               defaultValue={selectedLocation.id}
-              className="h-9 min-w-0 rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+              className="h-9 min-w-0 rounded-xl border border-white/25 bg-white/10 px-3 text-sm text-white outline-none focus-visible:border-white/50 focus-visible:ring-2 focus-visible:ring-white/20"
             >
               {locations.map((location) => (
-                <option key={location.id} value={location.id}>
+                <option key={location.id} value={location.id} className="text-foreground">
                   {location.name}
                 </option>
               ))}
             </select>
-            <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            <button type="submit" className={buttonVariants({ size: "sm", variant: "outline", className: "border-white/25 bg-white/10 text-white hover:bg-white/20" })}>
               Changer
             </button>
           </form>
