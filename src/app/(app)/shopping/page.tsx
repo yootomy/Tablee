@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DeleteShoppingItemButton } from "@/components/forms/delete-shopping-item-button";
 import { ShoppingAddItemDialog } from "@/components/forms/shopping-add-item-dialog";
@@ -38,10 +39,11 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
   if (locations.length === 0) {
     return (
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-4 text-white shadow-lg sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Courses</p>
-          <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Liste de courses</h1>
-        </div>
+        <AppPageHeader
+          eyebrow="Courses"
+          title="Liste de courses"
+          description="Centralise les articles à acheter pour chaque lieu de la famille."
+        />
         <EmptyState
           title="Aucun lieu disponible"
           description="Ajoutez d'abord un lieu à la famille pour créer une liste de courses."
@@ -82,41 +84,63 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-4 text-white shadow-lg sm:p-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Courses</p>
-        <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{selectedLocation.name}</h1>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
-            <ShoppingCart className="size-3.5" />
-            {pendingItems.length} à acheter
-          </span>
-          {completedItems.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-1 text-xs text-white">
-              {completedItems.length} acheté{completedItems.length > 1 ? "s" : ""}
+      <AppPageHeader
+        eyebrow="Courses"
+        title={selectedLocation.name}
+        description="Garde sous les yeux la liste du lieu actif, puis ajoute un article seulement quand tu en as besoin."
+        badges={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <ShoppingCart className="size-3.5" />
+              {pendingItems.length} à acheter
             </span>
-          ) : null}
-        </div>
+            {completedItems.length > 0 ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-1 text-xs text-white">
+                {completedItems.length} acheté{completedItems.length > 1 ? "s" : ""}
+              </span>
+            ) : null}
+          </>
+        }
+        action={
+          <ShoppingAddItemDialog
+            locationId={selectedLocation.id}
+            locationName={selectedLocation.name}
+            triggerClassName="hidden border-white/20 bg-white/95 text-foreground hover:bg-white md:inline-flex"
+          />
+        }
+      >
         {locations.length > 1 ? (
-          <form className="mt-3 flex items-center gap-2">
-            <MapPin className="size-3.5 shrink-0 text-white/70" />
-            <select
-              name="locationId"
-              defaultValue={selectedLocation.id}
-              className="h-9 min-w-0 rounded-xl border border-white/25 bg-white/10 px-3 text-sm text-white outline-none focus-visible:border-white/50 focus-visible:ring-2 focus-visible:ring-white/20"
-            >
-              {locations.map((location) => (
-                <option key={location.id} value={location.id} className="text-foreground">
-                  {location.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className={buttonVariants({ size: "sm", variant: "outline", className: "border-white/25 bg-white/10 text-white hover:bg-white/20" })}>
-              Changer
-            </button>
+          <form className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm text-white/75">
+              <MapPin className="size-4 shrink-0" />
+              <span>Lieu actif</span>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                name="locationId"
+                defaultValue={selectedLocation.id}
+                className="h-11 min-w-0 rounded-full border border-white/20 bg-white/95 px-4 text-base text-foreground outline-none transition-colors focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25 sm:min-w-[13rem] md:h-9 md:text-sm"
+              >
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className={buttonVariants({
+                  size: "sm",
+                  variant: "outline",
+                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                })}
+              >
+                Rafraîchir la liste
+              </button>
+            </div>
           </form>
         ) : null}
-      </div>
+      </AppPageHeader>
 
       {/* Liste */}
       <Card>
@@ -148,27 +172,38 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                 const createdBy =
                   item.family_members_shopping_items_family_id_created_by_profile_idTofamily_members
                     .profiles_family_members_profile_idToprofiles.display_name;
+                const extraInfo = [
+                  item.comment ? `Note : ${item.comment}` : null,
+                  item.recipes ? `Depuis la recette : ${item.recipes.title}` : null,
+                  item.meal_plans ? `Repas lié : ${item.meal_plans.title}` : null,
+                  createdBy ? `Ajouté par : ${createdBy}` : null,
+                ].filter(Boolean) as string[];
 
                 return (
                   <div
                     key={item.id}
-                    className="flex gap-2.5 rounded-lg border p-3"
+                    className="flex gap-2.5 rounded-xl border border-border p-2.5 sm:p-3"
                   >
                     <ShoppingItemToggle itemId={item.id} checked={item.is_completed} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-medium leading-5">{item.name}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {[
-                              quantity,
-                              item.comment,
-                              item.recipes ? `via ${item.recipes.title}` : null,
-                              createdBy ? `par ${createdBy}` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
+                          {quantity ? (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{quantity}</p>
+                          ) : null}
+                          {extraInfo.length > 0 ? (
+                            <details className="mt-1.5">
+                              <summary className="cursor-pointer text-xs font-medium text-primary/80 hover:text-primary">
+                                Plus d&apos;infos
+                              </summary>
+                              <div className="mt-1 space-y-1 rounded-xl bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                {extraInfo.map((line) => (
+                                  <p key={line}>{line}</p>
+                                ))}
+                              </div>
+                            </details>
+                          ) : null}
                         </div>
                         <DeleteShoppingItemButton itemId={item.id} />
                       </div>
@@ -198,11 +233,17 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                   const completedBy =
                     item.family_members_shopping_items_family_id_completed_by_profile_idTofamily_members
                       ?.profiles_family_members_profile_idToprofiles.display_name;
+                  const extraInfo = [
+                    completedBy ? `Validé par : ${completedBy}` : null,
+                    item.completed_at
+                      ? `Le ${new Date(item.completed_at).toLocaleDateString("fr-CH")}`
+                      : null,
+                  ].filter(Boolean) as string[];
 
                   return (
                     <div
                       key={item.id}
-                      className="flex gap-2.5 rounded-lg border border-border/50 bg-muted/20 p-3"
+                      className="flex gap-2.5 rounded-xl border border-border/50 bg-muted/20 p-2.5 sm:p-3"
                     >
                       <ShoppingItemToggle itemId={item.id} checked={item.is_completed} />
                       <div className="min-w-0 flex-1">
@@ -211,17 +252,21 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                             <p className="text-sm font-medium leading-5 line-through decoration-muted-foreground/60">
                               {item.name}
                             </p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {[
-                                quantity,
-                                completedBy ? `validé par ${completedBy}` : null,
-                                item.completed_at
-                                  ? `le ${new Date(item.completed_at).toLocaleDateString("fr-CH")}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
+                            {quantity ? (
+                              <p className="mt-0.5 text-xs text-muted-foreground">{quantity}</p>
+                            ) : null}
+                            {extraInfo.length > 0 ? (
+                              <details className="mt-1.5">
+                                <summary className="cursor-pointer text-xs font-medium text-primary/80 hover:text-primary">
+                                  Plus d&apos;infos
+                                </summary>
+                                <div className="mt-1 space-y-1 rounded-xl bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                                  {extraInfo.map((line) => (
+                                    <p key={line}>{line}</p>
+                                  ))}
+                                </div>
+                              </details>
+                            ) : null}
                           </div>
                           <DeleteShoppingItemButton itemId={item.id} />
                         </div>

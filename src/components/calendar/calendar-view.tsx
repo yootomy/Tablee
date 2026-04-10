@@ -128,78 +128,93 @@ export function CalendarView({
         title={currentPeriodLabel}
         description="Visualise les repas de la famille, puis planifie ou ajuste la semaine sans quitter le contexte."
         meta={`${view === "week" ? "Vue semaine" : "Vue mois"} • ${currentLocationLabel}`}
-      />
-
-      <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => (view === "week" ? navigateWeek(-1) : navigateMonth(-1))}
-              className={buttonVariants({ variant: "outline", size: "icon-sm" })}
-            >
-              ‹
-            </button>
-            <button
-              onClick={() => (view === "week" ? navigateWeek(1) : navigateMonth(1))}
-              className={buttonVariants({ variant: "outline", size: "icon-sm" })}
-            >
-              ›
-            </button>
-            <button onClick={goToToday} className={buttonVariants({ size: "sm" })}>
-              Aujourd&apos;hui
-            </button>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-            {locations.length > 1 && (
-              <select
-                value={selectedLocationId}
-                onChange={(event) => {
-                  const params = new URLSearchParams(window.location.search);
-                  if (event.target.value) {
-                    params.set("locationId", event.target.value);
-                  } else {
-                    params.delete("locationId");
-                  }
-                  params.set("week", formatDateKey(weekStart));
-                  router.push(`/calendar?${params.toString()}`);
-                }}
-                className="h-10 w-full rounded-full border border-border bg-background px-4 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 sm:w-auto sm:min-w-[11rem] md:h-9 md:text-sm"
-              >
-                <option value="">Tous les lieux</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <div className="flex self-start rounded-full bg-muted p-0.5">
+      >
+        <div className="rounded-2xl bg-white/10 p-3 sm:p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setView("week")}
-                className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
-                  view === "week"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                onClick={() => (view === "week" ? navigateWeek(-1) : navigateMonth(-1))}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "icon-sm",
+                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                })}
               >
-                Semaine
+                ‹
               </button>
               <button
-                onClick={() => setView("month")}
-                className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
-                  view === "month"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                onClick={() => (view === "week" ? navigateWeek(1) : navigateMonth(1))}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "icon-sm",
+                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                })}
               >
-                Mois
+                ›
               </button>
+              <button
+                onClick={goToToday}
+                className={buttonVariants({
+                  size: "sm",
+                  variant: "outline",
+                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                })}
+              >
+                Aujourd&apos;hui
+              </button>
+            </div>
+
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+              {locations.length > 1 && (
+                <select
+                  value={selectedLocationId}
+                  onChange={(event) => {
+                    const params = new URLSearchParams(window.location.search);
+                    if (event.target.value) {
+                      params.set("locationId", event.target.value);
+                    } else {
+                      params.delete("locationId");
+                    }
+                    params.set("week", formatDateKey(weekStart));
+                    router.push(`/calendar?${params.toString()}`);
+                  }}
+                  className="h-11 w-full rounded-full border border-white/20 bg-white/95 px-4 text-base text-foreground outline-none transition-colors focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25 sm:w-auto sm:min-w-[11rem] md:h-9 md:text-sm"
+                >
+                  <option value="">Tous les lieux</option>
+                  {locations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <div className="flex self-start rounded-full bg-white/15 p-0.5">
+                <button
+                  onClick={() => setView("week")}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
+                    view === "week"
+                      ? "bg-white text-primary"
+                      : "text-white/80 hover:text-white"
+                  }`}
+                >
+                  Semaine
+                </button>
+                <button
+                  onClick={() => setView("month")}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
+                    view === "month"
+                      ? "bg-white text-primary"
+                      : "text-white/80 hover:text-white"
+                  }`}
+                >
+                  Mois
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </PageHero>
 
       {view === "week" && (
         <>

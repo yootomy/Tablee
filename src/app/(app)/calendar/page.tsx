@@ -8,6 +8,7 @@ import {
   getWeekStart,
   parseDateOnly,
 } from "@/lib/calendar";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
@@ -71,10 +72,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   if (locations.length === 0) {
     return (
       <div className="space-y-6 p-4 sm:p-6">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-primary">Calendrier</p>
-          <h2 className="text-2xl font-bold">Planning des repas</h2>
-        </div>
+        <AppPageHeader
+          eyebrow="Calendrier"
+          title="Planning des repas"
+          description="Ajoute un lieu de référence pour commencer à organiser la semaine de la famille."
+        />
         <EmptyState
           title="Aucun lieu disponible"
           description="Ajoute d'abord un lieu dans la famille pour pouvoir planifier des repas."

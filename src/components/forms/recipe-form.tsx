@@ -6,6 +6,7 @@ import { createRecipe, updateRecipe } from "@/actions/recipes";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormSection } from "@/components/shared/form-section";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2, X } from "lucide-react";
 
@@ -119,10 +120,10 @@ function IngredientEditorDialog({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h3 id="ingredient-editor-title" className="text-lg font-bold">
-              {mode === "create" ? "Ajouter un ingrédient" : "Modifier l'ingrédient"}
+              {mode === "create" ? "Ajouter un ingrédient" : "Modifier l&apos;ingrédient"}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Garde seulement l'essentiel : nom, quantité, unité et note utile.
+              Garde seulement l&apos;essentiel : nom, quantité, unité et note utile.
             </p>
           </div>
 
@@ -310,8 +311,10 @@ export function RecipeForm({
         />
         <input type="hidden" name="steps" value={JSON.stringify(steps)} readOnly />
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="space-y-4">
+        <FormSection
+          title="Informations"
+          description="Les infos clés pour reconnaître la recette d&apos;un coup d&apos;œil."
+        >
             {/* Titre */}
             <div className="space-y-2">
               <Label htmlFor="title">Titre</Label>
@@ -326,7 +329,7 @@ export function RecipeForm({
             </div>
 
             {/* Prépa / Cuisson / Portions — une seule ligne */}
-            <div className="grid gap-3 grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-1.5">
                 <Label htmlFor="prepTimeMinutes" className="text-xs">Préparation</Label>
                 <div className="relative">
@@ -412,156 +415,145 @@ export function RecipeForm({
                 </div>
               </div>
             )}
+        </FormSection>
 
-            {/* Ingrédients — section inline */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold">
-                  Ingrédients
-                  {ingredients.length > 0 ? (
-                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                      ({ingredients.length})
-                    </span>
-                  ) : null}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openIngredientDialog("create")}
-                >
-                  <Plus className="size-4" />
-                  Ajouter
-                </Button>
-              </div>
+        <FormSection
+          title="Ingrédients"
+          description={`${ingredients.length} ingrédient${ingredients.length > 1 ? "s" : ""}`}
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openIngredientDialog("create")}
+            >
+              <Plus className="size-4" />
+              Ajouter
+            </Button>
+          }
+        >
 
-              {ingredients.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-primary/20 bg-primary/5 px-4 py-5 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Aucun ingrédient — utilise le bouton ci-dessus.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-2 md:grid-cols-2">
-                  {ingredients.map((ingredient, index) => {
-                    const quantityLabel = getIngredientQuantityLabel(ingredient);
+          {ingredients.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-primary/20 bg-primary/5 px-4 py-5 text-center">
+              <p className="text-sm text-muted-foreground">
+                Aucun ingrédient — utilise le bouton ci-dessus.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-2">
+              {ingredients.map((ingredient, index) => {
+                const quantityLabel = getIngredientQuantityLabel(ingredient);
 
-                    return (
-                      <div
-                        key={`ingredient-${index}`}
-                        className="rounded-xl border border-border bg-muted/15 p-3 transition-colors hover:border-primary/25 hover:bg-primary/5"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start gap-2.5">
-                              <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                                {index + 1}
+                return (
+                  <div
+                    key={`ingredient-${index}`}
+                    className="rounded-xl border border-border bg-muted/15 p-3 transition-colors hover:border-primary/25 hover:bg-primary/5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-2.5">
+                          <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold leading-5">
+                              {ingredient.name}
+                            </p>
+                            <div className="mt-0.5 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+                              <span className="rounded-full bg-background px-2 py-0.5 ring-1 ring-border">
+                                {quantityLabel ?? "Quantité libre"}
                               </span>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold leading-5">
-                                  {ingredient.name}
-                                </p>
-                                <div className="mt-0.5 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
-                                  <span className="rounded-full bg-background px-2 py-0.5 ring-1 ring-border">
-                                    {quantityLabel ?? "Quantité libre"}
-                                  </span>
-                                  {ingredient.note.trim() ? (
-                                    <span className="rounded-full bg-background px-2 py-0.5 ring-1 ring-border">
-                                      {ingredient.note}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
+                              {ingredient.note.trim() ? (
+                                <span className="rounded-full bg-background px-2 py-0.5 ring-1 ring-border">
+                                  {ingredient.note}
+                                </span>
+                              ) : null}
                             </div>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="xs"
-                              onClick={() => openIngredientDialog("edit", index)}
-                            >
-                              Modifier
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="xs"
-                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => removeIngredient(index)}
-                              aria-label={`Supprimer ${ingredient.name}`}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
 
-            {/* Étapes — section inline */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold">
-                  Étapes
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                    ({steps.length})
-                  </span>
-                </p>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          onClick={() => openIngredientDialog("edit", index)}
+                        >
+                          Modifier
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => removeIngredient(index)}
+                          aria-label={`Supprimer ${ingredient.name}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </FormSection>
+
+        <FormSection
+          title="Étapes"
+          description={`${steps.length} étape${steps.length > 1 ? "s" : ""}`}
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSteps((current) => [...current, blankStep()])}
+            >
+              <Plus className="size-4" />
+              Ajouter
+            </Button>
+          }
+        >
+
+          <div className="space-y-2">
+            {steps.map((step, index) => (
+              <div
+                key={`step-${index}`}
+                className="flex gap-2.5 rounded-xl border border-border bg-muted/15 p-3"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {index + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <textarea
+                    id={`step-instruction-${index}`}
+                    value={step.instruction}
+                    onChange={(event) => updateStep(index, event.target.value)}
+                    className="min-h-20 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 md:text-sm"
+                    placeholder="Décris clairement ce qu'il faut faire."
+                  />
+                </div>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSteps((current) => [...current, blankStep()])}
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0 self-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() =>
+                    setSteps((current) =>
+                      current.length === 1
+                        ? [blankStep()]
+                        : current.filter((_, currentIndex) => currentIndex !== index),
+                    )
+                  }
                 >
-                  <Plus className="size-4" />
-                  Ajouter
+                  <Trash2 className="size-3.5" />
                 </Button>
               </div>
-
-              <div className="space-y-2">
-                {steps.map((step, index) => (
-                  <div
-                    key={`step-${index}`}
-                    className="flex gap-2.5 rounded-xl border border-border bg-muted/15 p-3"
-                  >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                      {index + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <textarea
-                        id={`step-instruction-${index}`}
-                        value={step.instruction}
-                        onChange={(event) => updateStep(index, event.target.value)}
-                        className="min-h-20 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 md:text-sm"
-                        placeholder="Décris clairement ce qu'il faut faire."
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      className="shrink-0 self-start text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() =>
-                        setSteps((current) =>
-                          current.length === 1
-                            ? [blankStep()]
-                            : current.filter((_, currentIndex) => currentIndex !== index),
-                        )
-                      }
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
+        </FormSection>
 
         {error ? (
           <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">

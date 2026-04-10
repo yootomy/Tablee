@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getMealWeekHref } from "@/lib/calendar";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -111,55 +112,54 @@ export default async function MealDetailPage({ params }: MealDetailPageProps) {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-primary">Détail repas</p>
-            <h2 className="text-2xl font-bold sm:text-3xl">{mealPlan.title}</h2>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full bg-background/80 px-2.5 py-1">
-                {new Date(mealPlan.meal_date).toLocaleDateString("fr-CH", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+      <AppPageHeader
+        eyebrow="Repas"
+        title={mealPlan.title}
+        description={`${mealPlan.locations?.name ?? "Lieu non défini"} • ${formatMealSlot(
+          mealPlan.meal_slot,
+        )} • ${formatMealStatus(mealPlan.status)}`}
+        badges={
+          <>
+            <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              {new Date(mealPlan.meal_date).toLocaleDateString("fr-CH", {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            {responsible ? (
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+                {responsible}
               </span>
-              <span className="rounded-full bg-background/80 px-2.5 py-1">
-                {formatMealSlot(mealPlan.meal_slot)}
-              </span>
-              <span className="rounded-full bg-background/80 px-2.5 py-1">
-                {formatMealStatus(mealPlan.status)}
-              </span>
-              {mealPlan.locations ? (
-                <span className="rounded-full bg-background/80 px-2.5 py-1">
-                  {mealPlan.locations.name}
-                </span>
-              ) : null}
-              {responsible ? (
-                <span className="rounded-full bg-background/80 px-2.5 py-1">
-                  {responsible}
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
+            ) : null}
+          </>
+        }
+        action={
+          <>
             <Link
               href={`/calendar/${mealPlan.id}/edit`}
-              className={buttonVariants()}
+              className={buttonVariants({
+                size: "sm",
+                variant: "outline",
+                className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+              })}
             >
               Modifier
             </Link>
             <Link
               href={returnHref}
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({
+                size: "sm",
+                variant: "outline",
+                className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+              })}
             >
               Retour au calendrier
             </Link>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
         <div className="space-y-4">

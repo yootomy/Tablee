@@ -80,10 +80,14 @@ export function InviteMemberForm() {
         </div>
       </form>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       {invite ? (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
           <p className="text-sm font-medium">Dernier code généré</p>
           <p className="mt-2 text-2xl font-bold tracking-[0.2em]">
             {invite.code}

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
@@ -83,50 +84,50 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header compact */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
-        <p className="text-xs font-medium text-primary">{greeting} !</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{firstName}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{family?.name}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
-            <CalendarDays className="size-3.5" />
-            {upcomingMeals.length} repas prévu{upcomingMeals.length > 1 ? "s" : ""}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
-            <ChefHat className="size-3.5" />
-            {recipeCount} recette{recipeCount > 1 ? "s" : ""}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+      <AppPageHeader
+        eyebrow={`${greeting} !`}
+        title={firstName}
+        description={family?.name ?? "Tableau de bord familial"}
+        badges={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <CalendarDays className="size-3.5" />
+              {upcomingMeals.length} repas prévu{upcomingMeals.length > 1 ? "s" : ""}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <ChefHat className="size-3.5" />
+              {recipeCount} recette{recipeCount > 1 ? "s" : ""}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <ShoppingCart className="size-3.5" />
+              {totalShoppingItems} course{totalShoppingItems > 1 ? "s" : ""}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <Users className="size-3.5" />
+              {memberCount} membre{memberCount > 1 ? "s" : ""}
+            </span>
+          </>
+        }
+      >
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
+            <Plus className="size-3.5" />
+            Recette
+          </Link>
+          <Link href="/calendar/new" className={buttonVariants({ size: "sm" })}>
+            <Plus className="size-3.5" />
+            Repas
+          </Link>
+          <Link href="/shopping" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
             <ShoppingCart className="size-3.5" />
-            {totalShoppingItems} course{totalShoppingItems > 1 ? "s" : ""}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+            Courses
+          </Link>
+          <Link href="/family/members" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
             <Users className="size-3.5" />
-            {memberCount} membre{memberCount > 1 ? "s" : ""}
-          </span>
+            Famille
+          </Link>
         </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
-        <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
-          <Plus className="size-3.5" />
-          Recette
-        </Link>
-        <Link href="/calendar/new" className={buttonVariants({ size: "sm" })}>
-          <Plus className="size-3.5" />
-          Repas
-        </Link>
-        <Link href="/shopping" className={buttonVariants({ variant: "outline", size: "sm" })}>
-          <ShoppingCart className="size-3.5" />
-          Courses
-        </Link>
-        <Link href="/family/members" className={buttonVariants({ variant: "outline", size: "sm" })}>
-          <Users className="size-3.5" />
-          Famille
-        </Link>
-      </div>
+      </AppPageHeader>
 
       {/* Contenu principal */}
       <div className="grid gap-4 lg:grid-cols-2">

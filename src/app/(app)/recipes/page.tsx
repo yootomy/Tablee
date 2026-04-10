@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { RecipesSearchInput } from "@/components/forms/recipes-search-input";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,27 +41,33 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header compact */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-primary">Recettes</p>
-          <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
-            <Plus className="size-3.5" />
-            Ajouter
-          </Link>
-        </div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Carnet de cuisine</h1>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+      <AppPageHeader
+        eyebrow="Recettes"
+        title="Carnet de cuisine"
+        description="Retrouve toutes les recettes de la famille, puis ouvre une fiche complète seulement quand tu en as besoin."
+        badges={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
             <ChefHat className="size-3.5" />
             {recipes.length} recette{recipes.length > 1 ? "s" : ""}
             {trimmedQuery ? ` pour "${trimmedQuery}"` : ""}
           </span>
-        </div>
-        <div className="mt-3">
-          <RecipesSearchInput initialValue={trimmedQuery} />
-        </div>
-      </div>
+        }
+        action={
+          <Link
+            href="/recipes/new"
+            className={buttonVariants({
+              size: "sm",
+              variant: "outline",
+              className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+            })}
+          >
+            <Plus className="size-3.5" />
+            Ajouter
+          </Link>
+        }
+      >
+        <RecipesSearchInput initialValue={trimmedQuery} />
+      </AppPageHeader>
 
       {/* Contenu */}
       {recipes.length === 0 ? (

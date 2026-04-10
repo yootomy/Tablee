@@ -97,9 +97,15 @@ export function AddIngredientsToShoppingForm({
         ) : null}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       {successMessage ? (
-        <p className="text-sm text-emerald-700">{successMessage}</p>
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
+          {successMessage}
+        </p>
       ) : null}
 
       <Button type="submit" disabled={loading}>

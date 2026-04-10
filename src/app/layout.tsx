@@ -18,6 +18,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Tablee",
   description: "Organisez vos repas, recettes et courses en famille",
+  applicationName: "Tablee",
+  manifest: "/manifest.webmanifest",
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
+  icons: {
+    icon: "/logo-tablee-nobg.png",
+    apple: "/logo-tablee-nobg.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -29,6 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#00704A",
 };
 
 export default function RootLayout({
@@ -40,6 +52,7 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${nunito.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col overflow-x-hidden">
         <Providers>

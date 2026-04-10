@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -81,58 +82,65 @@ export default async function RecipeDetailPage({
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header compact */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <Link
-            href="/recipes"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-3.5" />
-            Recettes
-          </Link>
-          <Link
-            href={`/recipes/${recipe.id}/edit`}
-            className={buttonVariants({ size: "sm" })}
-          >
-            <Pencil className="size-3.5" />
-            Modifier
-          </Link>
-        </div>
-
-        <h1 className="text-2xl font-bold sm:text-3xl">{recipe.title}</h1>
-        {recipe.description?.trim() ? (
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            {recipe.description}
-          </p>
-        ) : null}
-
-        {stats.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
+      <AppPageHeader
+        eyebrow="Recettes"
+        title={recipe.title}
+        description={
+          recipe.description?.trim() ||
+          "Une fiche claire à ouvrir seulement quand tu veux tous les détails."
+        }
+        badges={
+          <>
             {stats.map((s) => (
               <span
                 key={s.label}
-                className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90"
               >
                 <s.icon className="size-3.5" />
                 {s.label}
               </span>
             ))}
-          </div>
-        ) : null}
-
+          </>
+        }
+        action={
+          <>
+            <Link
+              href="/recipes"
+              className={buttonVariants({
+                size: "sm",
+                variant: "outline",
+                className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+              })}
+            >
+              <ArrowLeft className="size-3.5" />
+              Recettes
+            </Link>
+            <Link
+              href={`/recipes/${recipe.id}/edit`}
+              className={buttonVariants({
+                size: "sm",
+                variant: "outline",
+                className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+              })}
+            >
+              <Pencil className="size-3.5" />
+              Modifier
+            </Link>
+          </>
+        }
+      >
         {recipe.source_url ? (
           <a
             href={recipe.source_url}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-white/75 hover:text-white hover:underline"
           >
             <ExternalLink className="size-3" />
             Source originale
           </a>
         ) : null}
-      </div>
+      </AppPageHeader>
 
       {/* Contenu principal */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">

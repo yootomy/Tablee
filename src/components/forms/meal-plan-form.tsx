@@ -7,6 +7,7 @@ import {
   deleteMealPlan,
   updateMealPlan,
 } from "@/actions/meal-plans";
+import { FormSection } from "@/components/shared/form-section";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,8 +120,10 @@ export function MealPlanForm({
           <input type="hidden" name="mealPlanId" value={mealPlanId} />
         ) : null}
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="space-y-4">
+        <FormSection
+          title="Planification"
+          description="Les infos essentielles pour retrouver et organiser le repas rapidement."
+        >
             {/* Recette liée */}
             <div className="space-y-2">
               <Label htmlFor="recipeId">Recette liée</Label>
@@ -153,8 +156,8 @@ export function MealPlanForm({
             </div>
 
             {/* Date / Moment / Lieu */}
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
-              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="mealDate" className="text-xs">Date</Label>
                 <Input
                   id="mealDate"
@@ -165,7 +168,7 @@ export function MealPlanForm({
                   required
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="mealSlot" className="text-xs">Moment</Label>
                 <select
                   id="mealSlot"
@@ -180,7 +183,7 @@ export function MealPlanForm({
                   <option value="dinner">Soir</option>
                 </select>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="locationId" className="text-xs">Lieu</Label>
                 <select
                   id="locationId"
@@ -197,72 +200,80 @@ export function MealPlanForm({
                 </select>
               </div>
             </div>
+        </FormSection>
 
-            {/* Options secondaires — masquées par défaut en création */}
-            {!showMore && (
+        <FormSection
+          title="Précisions"
+          description="Responsable, notes et statut si tu veux donner un peu plus de contexte."
+          action={
+            !showMore ? (
               <button
                 type="button"
                 onClick={() => setShowMore(true)}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                + Options (responsable, notes, statut)
+                + Afficher
               </button>
-            )}
-
-            {showMore && (
-              <div className="space-y-4 border-t border-border pt-4">
-                <div className="grid gap-3 grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="responsibleProfileId" className="text-xs">Responsable</Label>
-                    <select
-                      id="responsibleProfileId"
-                      name="responsibleProfileId"
-                      value={responsibleProfileId}
-                      onChange={(event) => setResponsibleProfileId(event.target.value)}
-                      className={selectClassName}
-                    >
-                      <option value="">Aucun</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="status" className="text-xs">Statut</Label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={status}
-                      onChange={(event) =>
-                        setStatus(
-                          event.target.value as "planned" | "done" | "canceled",
-                        )
-                      }
-                      className={selectClassName}
-                    >
-                      <option value="planned">Prévu</option>
-                      <option value="done">Fait</option>
-                      <option value="canceled">Annulé</option>
-                    </select>
-                  </div>
+            ) : null
+          }
+        >
+          {showMore ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5 min-w-0">
+                  <Label htmlFor="responsibleProfileId" className="text-xs">Responsable</Label>
+                  <select
+                    id="responsibleProfileId"
+                    name="responsibleProfileId"
+                    value={responsibleProfileId}
+                    onChange={(event) => setResponsibleProfileId(event.target.value)}
+                    className={selectClassName}
+                  >
+                    <option value="">Aucun</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="notes" className="text-xs">Notes</Label>
-                  <textarea
-                    id="notes"
-                    name="notes"
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Précisions, contraintes, rappel..."
-                    className="min-h-16 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 md:text-sm"
-                  />
+                <div className="space-y-1.5 min-w-0">
+                  <Label htmlFor="status" className="text-xs">Statut</Label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={status}
+                    onChange={(event) =>
+                      setStatus(
+                        event.target.value as "planned" | "done" | "canceled",
+                      )
+                    }
+                    className={selectClassName}
+                  >
+                    <option value="planned">Prévu</option>
+                    <option value="done">Fait</option>
+                    <option value="canceled">Annulé</option>
+                  </select>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="text-xs">Notes</Label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Précisions, contraintes, rappel..."
+                  className="min-h-16 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 md:text-sm"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Garde ce bloc compact tant que tu n’as pas besoin de responsable, de notes ou d’un statut particulier.
+            </p>
+          )}
+        </FormSection>
 
         {error ? (
           <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">

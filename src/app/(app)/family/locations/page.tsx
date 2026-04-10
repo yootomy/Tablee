@@ -4,6 +4,7 @@ import { requireActiveFamily } from "@/lib/auth-utils";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
 import { FamilySectionNav } from "@/components/layout/family-section-nav";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,24 +26,31 @@ export default async function FamilyLocationsPage() {
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-4 text-white shadow-lg sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Famille active</p>
-          <Link href="/onboarding" className={buttonVariants({ size: "sm", variant: "outline", className: "border-white/25 bg-white/10 text-white hover:bg-white/20" })}>
-            Créer ou rejoindre
-          </Link>
-        </div>
-        <h1 className="text-2xl font-extrabold sm:text-3xl">{family?.name ?? "Famille"}</h1>
-        <div className="mt-2 flex flex-wrap gap-2">
+      <AppPageHeader
+        eyebrow="Famille active"
+        title={family?.name ?? "Famille"}
+        description="Centralise les lieux utilisés par les repas et les courses pour garder une organisation simple."
+        badges={
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
             <MapPin className="size-3.5" />
             {locations.length} lieu{locations.length > 1 ? "x" : ""} actif{locations.length > 1 ? "s" : ""}
           </span>
-        </div>
-      </div>
-
-      <FamilySectionNav />
+        }
+        action={
+          <Link
+            href="/onboarding"
+            className={buttonVariants({
+              size: "sm",
+              variant: "outline",
+              className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+            })}
+          >
+            Créer ou rejoindre
+          </Link>
+        }
+      >
+        <FamilySectionNav inverse />
+      </AppPageHeader>
 
       {/* Contenu */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">

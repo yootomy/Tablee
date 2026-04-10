@@ -55,7 +55,7 @@ export function RecipesSearchInput({
         onChange={(event) => setValue(event.target.value)}
         placeholder="Rechercher une recette..."
         aria-label="Rechercher une recette"
-        className="h-11 rounded-full border-white/20 bg-white/95 pl-11 pr-10 text-sm text-foreground shadow-sm placeholder:text-foreground/45"
+        className="h-11 rounded-full border-white/20 bg-white/95 pl-11 pr-10 text-base text-foreground shadow-sm placeholder:text-foreground/45 md:text-sm"
       />
       {isPending ? (
         <span className="pointer-events-none absolute right-4 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/35" />

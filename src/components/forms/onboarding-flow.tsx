@@ -52,20 +52,14 @@ export function OnboardingFlow({ hasFamilies }: OnboardingFlowProps) {
   }
 
   return (
-    <div className="w-full max-w-5xl space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">
-          {hasFamilies ? "Ajouter un espace familial" : "Bienvenue sur Tablee"}
-        </h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          {hasFamilies
-            ? "Créez une nouvelle famille ou rejoignez-en une existante avec un code d'invitation."
-            : "Créez votre premier espace familial ou rejoignez la famille existante de vos proches."}
+    <div className="w-full space-y-6">
+      {hasFamilies ? (
+        <p className="text-sm text-muted-foreground">
+          Tu peux créer un nouvel espace familial ou rejoindre un autre foyer avec un code d&apos;invitation.
         </p>
-      </div>
-
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="border-primary/10 shadow-sm">
           <CardHeader>
             <CardTitle>Créer une famille</CardTitle>
             <CardDescription>
@@ -98,7 +92,9 @@ export function OnboardingFlow({ hasFamilies }: OnboardingFlowProps) {
                 </p>
               </div>
               {createError ? (
-                <p className="text-sm text-destructive">{createError}</p>
+                <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {createError}
+                </p>
               ) : null}
               <Button type="submit" className="w-full" disabled={createLoading}>
                 {createLoading ? "Création..." : "Créer cette famille"}
@@ -107,7 +103,7 @@ export function OnboardingFlow({ hasFamilies }: OnboardingFlowProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-primary/10 shadow-sm">
           <CardHeader>
             <CardTitle>Rejoindre une famille</CardTitle>
             <CardDescription>
@@ -131,7 +127,9 @@ export function OnboardingFlow({ hasFamilies }: OnboardingFlowProps) {
                 </p>
               </div>
               {joinError ? (
-                <p className="text-sm text-destructive">{joinError}</p>
+                <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {joinError}
+                </p>
               ) : null}
               <Button type="submit" className="w-full" disabled={joinLoading}>
                 {joinLoading ? "Connexion..." : "Rejoindre cette famille"}

@@ -37,8 +37,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
+    <Card className="border-primary/10 shadow-lg shadow-primary/5">
+      <CardHeader className="pb-4 text-center">
         <CardTitle className="text-2xl">Créer un compte</CardTitle>
         <CardDescription>
           Rejoignez Tablee pour organiser vos repas en famille
@@ -78,7 +78,9 @@ export default function RegisterPage() {
             />
           </div>
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
           )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Création..." : "Créer mon compte"}

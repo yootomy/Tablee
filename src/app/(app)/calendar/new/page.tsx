@@ -6,6 +6,7 @@ import {
   parseDateOnly,
 } from "@/lib/calendar";
 import { MealPlanForm } from "@/components/forms/meal-plan-form";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
@@ -73,6 +74,11 @@ export default async function NewMealPlanPage({
   if (locations.length === 0) {
     return (
       <div className="space-y-6 p-4 sm:p-6">
+        <AppPageHeader
+          eyebrow="Repas"
+          title="Planifier un repas"
+          description="Ajoute d’abord un lieu de référence pour pouvoir organiser les repas de la famille."
+        />
         <EmptyState
           icon={<MapPin className="size-10 text-muted-foreground/40" />}
           title="Impossible de planifier un repas"
@@ -99,17 +105,17 @@ export default async function NewMealPlanPage({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex items-start gap-4 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/40 p-5">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-          <CalendarDays className="size-6 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-extrabold sm:text-2xl">Planifier un repas</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choisis la date, le moment, le lieu et relie le repas à une recette si tu veux.
-          </p>
-        </div>
-      </div>
+      <AppPageHeader
+        eyebrow="Repas"
+        title="Planifier un repas"
+        description="Pose la base du repas en quelques champs seulement, puis ajoute des précisions uniquement si nécessaire."
+        badges={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+            <CalendarDays className="size-3.5" />
+            Création rapide
+          </span>
+        }
+      />
 
       <MealPlanForm
         mode="create"

@@ -7,6 +7,7 @@ import {
 } from "@/lib/calendar";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { MealPlanForm } from "@/components/forms/meal-plan-form";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { CalendarDays } from "lucide-react";
 
 type EditMealPlanPageProps = {
@@ -69,18 +70,17 @@ export default async function EditMealPlanPage({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex items-start gap-4 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/40 p-5">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-          <CalendarDays className="size-6 text-primary" />
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-primary">Modifier un repas</p>
-          <h2 className="mt-0.5 text-xl font-extrabold sm:text-2xl">{mealPlan.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ajuste le moment, le lieu, la recette liée ou le statut de ce repas.
-          </p>
-        </div>
-      </div>
+      <AppPageHeader
+        eyebrow="Repas"
+        title={mealPlan.title}
+        description="Mets à jour le contexte du repas, sans perdre le lien avec la recette ou la liste de courses."
+        badges={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+            <CalendarDays className="size-3.5" />
+            Édition
+          </span>
+        }
+      />
 
       <MealPlanForm
         mode="edit"

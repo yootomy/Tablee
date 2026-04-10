@@ -1,20 +1,21 @@
 import { RecipeForm } from "@/components/forms/recipe-form";
+import { AppPageHeader } from "@/components/layout/app-page-header";
 import { ChefHat } from "lucide-react";
 
 export default function NewRecipePage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex items-start gap-4 rounded-2xl bg-gradient-to-br from-primary/8 to-accent/50 p-5">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-          <ChefHat className="size-6 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-extrabold sm:text-2xl">Nouvelle recette</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Saisis le titre, les ingrédients, les étapes et les informations utiles pour la famille.
-          </p>
-        </div>
-      </div>
+      <AppPageHeader
+        eyebrow="Recettes"
+        title="Nouvelle recette"
+        description="Saisis seulement l’essentiel, puis construis une fiche claire et agréable à réutiliser pour toute la famille."
+        badges={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+            <ChefHat className="size-3.5" />
+            Création guidée
+          </span>
+        }
+      />
 
       <RecipeForm mode="create" />
     </div>

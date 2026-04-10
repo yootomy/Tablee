@@ -80,7 +80,11 @@ export function ManualShoppingItemForm({
         </div>
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       <Button type="submit" disabled={loading} className="w-full sm:w-auto">
         {loading ? "Ajout..." : "Ajouter à la liste"}
