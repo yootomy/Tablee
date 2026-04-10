@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   basePath: "/tablee/api/auth",
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
