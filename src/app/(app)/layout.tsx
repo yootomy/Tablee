@@ -59,7 +59,7 @@ export default async function AppLayout({
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-accent/30 md:flex md:flex-col">
         <div className="flex items-center gap-2.5 p-5">
-          <Image src="/logo-tablee-nobg.png" alt="" width={36} height={36} className="size-9" />
+          <Image src="/tablee/logo-tablee-nobg.png" alt="" width={36} height={36} className="size-9" />
           <h1 className="text-2xl font-extrabold tracking-tight text-primary">Tablee</h1>
         </div>
         <div className="px-4">
@@ -75,7 +75,7 @@ export default async function AppLayout({
       {/* Mobile header */}
       <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-accent/30 px-4 py-2.5 backdrop-blur-sm [padding-left:max(env(safe-area-inset-left),1rem)] [padding-right:max(env(safe-area-inset-right),1rem)] md:hidden">
         <div className="flex shrink-0 items-center gap-2">
-          <Image src="/logo-tablee-nobg.png" alt="" width={28} height={28} className="size-7" />
+          <Image src="/tablee/logo-tablee-nobg.png" alt="" width={28} height={28} className="size-7" />
           <h1 className="text-lg font-extrabold tracking-tight text-primary">Tablee</h1>
         </div>
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">

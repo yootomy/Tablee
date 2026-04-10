@@ -19,15 +19,15 @@ export const metadata: Metadata = {
   title: "Tablee",
   description: "Organisez vos repas, recettes et courses en famille",
   applicationName: "Tablee",
-  manifest: "/manifest.webmanifest",
+  manifest: "/tablee/manifest.webmanifest",
   formatDetection: {
     telephone: false,
     email: false,
     address: false,
   },
   icons: {
-    icon: "/logo-tablee-nobg.png",
-    apple: "/logo-tablee-nobg.png",
+    icon: "/tablee/logo-tablee-nobg.png",
+    apple: "/tablee/logo-tablee-nobg.png",
   },
   appleWebApp: {
     capable: true,

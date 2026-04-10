@@ -12,7 +12,7 @@ export default function AuthLayout({
           <section className="space-y-5">
             <div className="inline-flex items-center gap-3 rounded-full border border-primary/10 bg-background/75 px-4 py-2 shadow-sm backdrop-blur-sm">
               <Image
-                src="/logo-tablee-nobg.png"
+                src="/tablee/logo-tablee-nobg.png"
                 alt=""
                 width={36}
                 height={36}
