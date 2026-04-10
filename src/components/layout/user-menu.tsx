@@ -1,14 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 
 interface UserMenuProps {
   name: string;
@@ -16,6 +18,7 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ name, compact = false }: UserMenuProps) {
+  const router = useRouter();
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -36,6 +39,11 @@ export function UserMenu({ name, compact = false }: UserMenuProps) {
         <span className="hidden text-sm font-semibold md:inline">{name}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => router.push("/profile")}>
+          <User className="size-4" />
+          Mon profil
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/tablee/login" })}>
           <LogOut className="size-4" />
           Se déconnecter

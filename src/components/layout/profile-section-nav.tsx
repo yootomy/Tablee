@@ -5,17 +5,19 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/family/members", label: "Membres" },
-  { href: "/family/locations", label: "Lieux" },
+  { href: "/profile", label: "Membres", exact: true },
+  { href: "/profile/locations", label: "Lieux" },
 ];
 
-export function FamilySectionNav({ inverse = false }: { inverse?: boolean }) {
+export function ProfileSectionNav({ inverse = false }: { inverse?: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-wrap gap-2">
       {links.map((link) => {
-        const isActive = pathname.startsWith(link.href);
+        const isActive = link.exact
+          ? pathname === "/tablee/profile" || pathname === "/profile"
+          : pathname.startsWith(link.href);
 
         return (
           <Link

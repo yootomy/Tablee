@@ -66,7 +66,7 @@ export async function createLocation(formData: FormData): Promise<ActionResult> 
     }
   });
 
-  revalidatePath("/family/locations");
+  revalidatePath("/profile/locations");
   revalidatePath("/shopping");
 
   return { success: true };
@@ -99,7 +99,7 @@ export async function updateLocation(formData: FormData): Promise<ActionResult> 
     return { success: false, error: "Le lieu demandé est introuvable" };
   }
 
-  revalidatePath("/family/locations");
+  revalidatePath("/profile/locations");
 
   return { success: true };
 }
@@ -147,7 +147,7 @@ export async function setPreferredLocation(
     },
   });
 
-  revalidatePath("/family/locations");
+  revalidatePath("/profile/locations");
   revalidatePath("/shopping");
 
   return { success: true };

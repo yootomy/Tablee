@@ -252,7 +252,7 @@ export async function createFamilyInvite(
     },
   });
 
-  revalidatePath("/family/members");
+  revalidatePath("/profile");
 
   return {
     success: true,
@@ -299,7 +299,7 @@ export async function revokeFamilyInvite(
     },
   });
 
-  revalidatePath("/family/members");
+  revalidatePath("/profile");
 
   return { success: true };
 }
@@ -455,7 +455,7 @@ export async function removeFamilyMember(
     });
   });
 
-  revalidatePath("/family/members");
+  revalidatePath("/profile");
   revalidatePath("/dashboard");
 
   return { success: true };

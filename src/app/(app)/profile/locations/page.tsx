@@ -5,7 +5,7 @@ import { getPreferredLocationId } from "@/lib/location-preferences";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
 import { SetDefaultLocationButton } from "@/components/forms/set-default-location-button";
-import { FamilySectionNav } from "@/components/layout/family-section-nav";
+import { ProfileSectionNav } from "@/components/layout/profile-section-nav";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default async function FamilyLocationsPage() {
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <AppPageHeader
-        eyebrow="Famille active"
+        eyebrow="Mon profil"
         title={family?.name ?? "Famille"}
         description="Centralise les lieux utilisés par les repas et les courses pour garder une organisation simple."
         badges={
@@ -66,7 +66,7 @@ export default async function FamilyLocationsPage() {
         }
       >
         <div className="flex flex-wrap items-center gap-2">
-          <FamilySectionNav inverse />
+          <ProfileSectionNav inverse />
           <Link
             href="/onboarding"
             className={buttonVariants({

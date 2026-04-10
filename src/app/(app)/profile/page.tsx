@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
-import { FamilySectionNav } from "@/components/layout/family-section-nav";
+import { ProfileSectionNav } from "@/components/layout/profile-section-nav";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { InviteMemberForm } from "@/components/forms/invite-member-form";
 import { RemoveFamilyMemberButton } from "@/components/forms/remove-family-member-button";
@@ -15,7 +15,7 @@ function formatRole(role: "admin" | "member") {
   return role === "admin" ? "Admin" : "Membre";
 }
 
-export default async function FamilyMembersPage() {
+export default async function ProfilePage() {
   const { familyId, role, profileId } = await requireActiveFamily();
 
   const [family, members, invites] = await Promise.all([
@@ -59,9 +59,9 @@ export default async function FamilyMembersPage() {
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <AppPageHeader
-        eyebrow="Famille active"
+        eyebrow="Mon profil"
         title={family?.name ?? "Famille"}
-        description="Retrouve les membres, gère les invitations et garde une seule logique de collaboration dans toute l’app."
+        description="Retrouve les membres, gère les invitations et les lieux de ta famille."
         badges={
           <>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
@@ -82,7 +82,7 @@ export default async function FamilyMembersPage() {
         }
       >
         <div className="flex flex-wrap items-center gap-2">
-          <FamilySectionNav inverse />
+          <ProfileSectionNav inverse />
           <Link
             href="/onboarding"
             className={buttonVariants({

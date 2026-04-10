@@ -96,7 +96,7 @@ export default async function NewMealPlanPage({
           title="Impossible de planifier un repas"
           description="Ajoute d'abord un lieu à la famille active pour continuer."
           action={
-            <Link href="/family/locations" className={buttonVariants()}>
+            <Link href="/profile/locations" className={buttonVariants()}>
               Gérer les lieux
             </Link>
           }

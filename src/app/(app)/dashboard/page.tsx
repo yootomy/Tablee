@@ -122,7 +122,7 @@ export default async function DashboardPage() {
             <ShoppingCart className="size-3.5" />
             Courses
           </Link>
-          <Link href="/family/members" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
+          <Link href="/profile" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
             <Users className="size-3.5" />
             Famille
           </Link>

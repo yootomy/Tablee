@@ -63,7 +63,7 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
           title="Aucun lieu disponible"
           description="Ajoutez d'abord un lieu à la famille pour créer une liste de courses."
           action={
-            <Link href="/family/locations" className={buttonVariants()}>
+            <Link href="/profile/locations" className={buttonVariants()}>
               Gérer les lieux
             </Link>
           }

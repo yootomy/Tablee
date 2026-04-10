@@ -93,7 +93,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           title="Aucun lieu disponible"
           description="Ajoute d'abord un lieu dans la famille pour pouvoir planifier des repas."
           action={
-            <Link href="/family/locations" className={buttonVariants()}>
+            <Link href="/profile/locations" className={buttonVariants()}>
               Gérer les lieux
             </Link>
           }

@@ -7,7 +7,6 @@ import {
   CalendarDays,
   ChefHat,
   ShoppingCart,
-  Users,
 } from "lucide-react";
 
 const links = [
@@ -15,7 +14,6 @@ const links = [
   { href: "/calendar", label: "Repas", icon: CalendarDays },
   { href: "/recipes", label: "Recettes", icon: ChefHat },
   { href: "/shopping", label: "Courses", icon: ShoppingCart },
-  { href: "/family", label: "Famille", icon: Users },
 ];
 
 export function NavLinks({ className }: { className?: string }) {
