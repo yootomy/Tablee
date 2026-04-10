@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
+import { SetDefaultLocationButton } from "@/components/forms/set-default-location-button";
 import { FamilySectionNav } from "@/components/layout/family-section-nav";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -11,9 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Plus } from "lucide-react";
 
 export default async function FamilyLocationsPage() {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
 
-  const [family, locations] = await Promise.all([
+  const [family, locations, familyContextPreferences] = await Promise.all([
     prisma.families.findUnique({
       where: { id: familyId },
       select: { id: true, name: true },
@@ -22,7 +23,26 @@ export default async function FamilyLocationsPage() {
       where: { family_id: familyId, archived_at: null },
       orderBy: [{ created_at: "asc" }],
     }),
+    prisma.family_context_preferences.findUnique({
+      where: {
+        profile_id_family_id: {
+          profile_id: profileId,
+          family_id: familyId,
+        },
+      },
+      select: {
+        last_selected_location_id: true,
+      },
+    }),
   ]);
+
+  const preferredLocationId = locations.some(
+    (location) => location.id === familyContextPreferences?.last_selected_location_id,
+  )
+    ? familyContextPreferences?.last_selected_location_id ?? null
+    : locations[0]?.id ?? null;
+  const preferredLocationName =
+    locations.find((location) => location.id === preferredLocationId)?.name ?? null;
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -31,10 +51,18 @@ export default async function FamilyLocationsPage() {
         title={family?.name ?? "Famille"}
         description="Centralise les lieux utilisés par les repas et les courses pour garder une organisation simple."
         badges={
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
-            <MapPin className="size-3.5" />
-            {locations.length} lieu{locations.length > 1 ? "x" : ""} actif{locations.length > 1 ? "s" : ""}
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+              <MapPin className="size-3.5" />
+              {locations.length} lieu{locations.length > 1 ? "x" : ""} actif{locations.length > 1 ? "s" : ""}
+            </span>
+            {preferredLocationName ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
+                <MapPin className="size-3.5" />
+                Par défaut : {preferredLocationName}
+              </span>
+            ) : null}
+          </>
         }
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -72,27 +100,42 @@ export default async function FamilyLocationsPage() {
               />
             ) : (
               <div className="space-y-3">
-                {locations.map((location) => (
-                  <div
-                    key={location.id}
-                    className="rounded-2xl border border-border/80 bg-background/80 p-4"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">{location.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Ajouté le {new Date(location.created_at).toLocaleDateString("fr-CH")}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <EditLocationForm
-                          locationId={location.id}
-                          initialName={location.name}
-                        />
+                {locations.map((location) => {
+                  const isDefault = preferredLocationId === location.id;
+
+                  return (
+                    <div
+                      key={location.id}
+                      className="rounded-2xl border border-border/80 bg-background/80 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold">{location.name}</p>
+                            {isDefault ? (
+                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                                Courses par défaut
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Ajouté le {new Date(location.created_at).toLocaleDateString("fr-CH")}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <SetDefaultLocationButton
+                            locationId={location.id}
+                            isDefault={isDefault}
+                          />
+                          <EditLocationForm
+                            locationId={location.id}
+                            initialName={location.name}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

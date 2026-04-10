@@ -16,8 +16,12 @@ const updateLocationSchema = z.object({
   name: z.string().trim().min(1, "Le nom du lieu est requis"),
 });
 
+const setPreferredLocationSchema = z.object({
+  locationId: z.string().uuid("Le lieu par défaut est introuvable"),
+});
+
 export async function createLocation(formData: FormData): Promise<ActionResult> {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
 
   const parsed = createLocationSchema.safeParse({
     name: formData.get("name"),
@@ -27,14 +31,43 @@ export async function createLocation(formData: FormData): Promise<ActionResult> 
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  await prisma.locations.create({
-    data: {
-      family_id: familyId,
-      name: parsed.data.name,
-    },
+  await prisma.$transaction(async (tx) => {
+    const activeLocationCount = await tx.locations.count({
+      where: {
+        family_id: familyId,
+        archived_at: null,
+      },
+    });
+
+    const location = await tx.locations.create({
+      data: {
+        family_id: familyId,
+        name: parsed.data.name,
+      },
+    });
+
+    if (activeLocationCount === 0) {
+      await tx.family_context_preferences.upsert({
+        where: {
+          profile_id_family_id: {
+            profile_id: profileId,
+            family_id: familyId,
+          },
+        },
+        update: {
+          last_selected_location_id: location.id,
+        },
+        create: {
+          profile_id: profileId,
+          family_id: familyId,
+          last_selected_location_id: location.id,
+        },
+      });
+    }
   });
 
   revalidatePath("/family/locations");
+  revalidatePath("/shopping");
 
   return { success: true };
 }
@@ -67,6 +100,55 @@ export async function updateLocation(formData: FormData): Promise<ActionResult> 
   }
 
   revalidatePath("/family/locations");
+
+  return { success: true };
+}
+
+export async function setPreferredLocation(
+  formData: FormData,
+): Promise<ActionResult> {
+  const { familyId, profileId } = await requireActiveFamily();
+
+  const parsed = setPreferredLocationSchema.safeParse({
+    locationId: formData.get("locationId"),
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const location = await prisma.locations.findFirst({
+    where: {
+      id: parsed.data.locationId,
+      family_id: familyId,
+      archived_at: null,
+    },
+    select: { id: true },
+  });
+
+  if (!location) {
+    return { success: false, error: "Le lieu demandé est introuvable" };
+  }
+
+  await prisma.family_context_preferences.upsert({
+    where: {
+      profile_id_family_id: {
+        profile_id: profileId,
+        family_id: familyId,
+      },
+    },
+    update: {
+      last_selected_location_id: location.id,
+    },
+    create: {
+      profile_id: profileId,
+      family_id: familyId,
+      last_selected_location_id: location.id,
+    },
+  });
+
+  revalidatePath("/family/locations");
+  revalidatePath("/shopping");
 
   return { success: true };
 }

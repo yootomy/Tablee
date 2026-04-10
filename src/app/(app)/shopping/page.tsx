@@ -26,16 +26,29 @@ function formatShoppingQuantity(item: {
 }
 
 export default async function ShoppingPage({ searchParams }: ShoppingPageProps) {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
   const resolvedSearchParams = await searchParams;
   const rawLocationId = Array.isArray(resolvedSearchParams.locationId)
     ? resolvedSearchParams.locationId[0]
     : resolvedSearchParams.locationId;
 
-  const locations = await prisma.locations.findMany({
-    where: { family_id: familyId, archived_at: null },
-    orderBy: { name: "asc" },
-  });
+  const [locations, familyContextPreferences] = await Promise.all([
+    prisma.locations.findMany({
+      where: { family_id: familyId, archived_at: null },
+      orderBy: { name: "asc" },
+    }),
+    prisma.family_context_preferences.findUnique({
+      where: {
+        profile_id_family_id: {
+          profile_id: profileId,
+          family_id: familyId,
+        },
+      },
+      select: {
+        last_selected_location_id: true,
+      },
+    }),
+  ]);
 
   if (locations.length === 0) {
     return (
@@ -58,8 +71,16 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
     );
   }
 
+  const preferredLocationId = locations.some(
+    (location) => location.id === familyContextPreferences?.last_selected_location_id,
+  )
+    ? familyContextPreferences?.last_selected_location_id ?? null
+    : locations[0]?.id ?? null;
+
   const selectedLocation =
-    locations.find((location) => location.id === rawLocationId) ?? locations[0];
+    locations.find((location) => location.id === rawLocationId) ??
+    locations.find((location) => location.id === preferredLocationId) ??
+    locations[0];
 
   const items = await prisma.shopping_items.findMany({
     where: { family_id: familyId, location_id: selectedLocation.id },
