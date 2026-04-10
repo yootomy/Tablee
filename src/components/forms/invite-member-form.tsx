@@ -36,7 +36,7 @@ export function InviteMemberForm() {
 
   return (
     <div className="space-y-4">
-      <form action={handleSubmit} className="grid gap-4 md:grid-cols-3">
+      <form action={handleSubmit} className="space-y-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="roleToGrant">Rôle accordé</Label>
           <select
@@ -49,32 +49,43 @@ export function InviteMemberForm() {
             <option value="admin">Admin</option>
           </select>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="maxUses">Utilisations max</Label>
-          <Input
-            id="maxUses"
-            name="maxUses"
-            type="number"
-            defaultValue="1"
-            min="1"
-            max="25"
-            required
-          />
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="maxUses">Utilisations max</Label>
+            <Input
+              id="maxUses"
+              name="maxUses"
+              type="number"
+              defaultValue="1"
+              min="1"
+              max="25"
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="expiresInDays">Expire dans</Label>
+            <div className="relative">
+              <Input
+                id="expiresInDays"
+                name="expiresInDays"
+                type="number"
+                defaultValue="7"
+                min="1"
+                max="30"
+                required
+                className="pr-14"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                jours
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="expiresInDays">Expire dans</Label>
-          <Input
-            id="expiresInDays"
-            name="expiresInDays"
-            type="number"
-            defaultValue="7"
-            min="1"
-            max="30"
-            required
-          />
-        </div>
-        <div className="md:col-span-3">
-          <Button type="submit" disabled={loading}>
+
+        <div>
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
             {loading ? "Génération..." : "Générer un code d'invitation"}
           </Button>
         </div>
