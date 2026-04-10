@@ -55,7 +55,7 @@ export default async function AppLayout({
   const activeFamilyId = prefs?.active_family_id ?? memberships[0].families.id;
 
   return (
-    <div className="flex min-h-svh flex-col overflow-x-hidden md:min-h-screen md:flex-row">
+    <div className="flex min-h-svh flex-col md:min-h-screen md:flex-row">
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-accent/30 md:flex md:flex-col">
         <div className="flex items-center gap-2.5 p-5">
