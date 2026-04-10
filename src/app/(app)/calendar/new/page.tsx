@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getPreferredLocationId } from "@/lib/location-preferences";
 import {
   formatDateInputValue,
   getMealWeekHref,
@@ -23,7 +24,7 @@ type NewMealPlanPageProps = {
 export default async function NewMealPlanPage({
   searchParams,
 }: NewMealPlanPageProps) {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
   const resolvedSearchParams = await searchParams;
   const rawDate = Array.isArray(resolvedSearchParams.date)
     ? resolvedSearchParams.date[0]
@@ -35,13 +36,13 @@ export default async function NewMealPlanPage({
     ? resolvedSearchParams.locationId[0]
     : resolvedSearchParams.locationId;
 
-  const [locations, recipes, members] = await Promise.all([
+  const [locations, recipes, members, familyContextPreferences] = await Promise.all([
     prisma.locations.findMany({
       where: {
         family_id: familyId,
         archived_at: null,
       },
-      orderBy: { name: "asc" },
+      orderBy: { created_at: "asc" },
     }),
     prisma.recipes.findMany({
       where: {
@@ -67,6 +68,17 @@ export default async function NewMealPlanPage({
       },
       orderBy: {
         joined_at: "asc",
+      },
+    }),
+    prisma.family_context_preferences.findUnique({
+      where: {
+        profile_id_family_id: {
+          profile_id: profileId,
+          family_id: familyId,
+        },
+      },
+      select: {
+        last_selected_location_id: true,
       },
     }),
   ]);
@@ -98,9 +110,13 @@ export default async function NewMealPlanPage({
       ? parseDateOnly(rawDate)
       : new Date();
   const slot = rawSlot === "dinner" ? "dinner" : "lunch";
+  const preferredLocationId = getPreferredLocationId(
+    locations,
+    familyContextPreferences?.last_selected_location_id,
+  );
   const locationId = locations.some((location) => location.id === rawLocationId)
     ? rawLocationId!
-    : locations[0].id;
+    : preferredLocationId ?? locations[0].id;
   const returnHref = getMealWeekHref(date, locationId);
 
   return (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getPreferredLocationId } from "@/lib/location-preferences";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -42,10 +43,10 @@ function formatIngredientQuantity(ingredient: {
 export default async function RecipeDetailPage({
   params,
 }: RecipeDetailPageProps) {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
   const { id } = await params;
 
-  const [recipe, locations] = await Promise.all([
+  const [recipe, locations, familyContextPreferences] = await Promise.all([
     prisma.recipes.findFirst({
       where: { id, family_id: familyId, archived_at: null },
       include: {
@@ -55,8 +56,19 @@ export default async function RecipeDetailPage({
     }),
     prisma.locations.findMany({
       where: { family_id: familyId, archived_at: null },
-      orderBy: { name: "asc" },
+      orderBy: { created_at: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.family_context_preferences.findUnique({
+      where: {
+        profile_id_family_id: {
+          profile_id: profileId,
+          family_id: familyId,
+        },
+      },
+      select: {
+        last_selected_location_id: true,
+      },
     }),
   ]);
 
@@ -64,6 +76,10 @@ export default async function RecipeDetailPage({
 
   const totalMinutes =
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+  const preferredLocationId = getPreferredLocationId(
+    locations,
+    familyContextPreferences?.last_selected_location_id,
+  );
 
   const stats = [
     recipe.servings
@@ -226,7 +242,7 @@ export default async function RecipeDetailPage({
                 <AddIngredientsToShoppingForm
                   source="recipe"
                   sourceId={recipe.id}
-                  defaultLocationId={locations[0].id}
+                  defaultLocationId={preferredLocationId ?? locations[0].id}
                   locations={locations.map((l) => ({
                     id: l.id,
                     label: l.name,

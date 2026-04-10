@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getPreferredLocationId } from "@/lib/location-preferences";
 import {
   addDays,
   formatDateKey,
@@ -18,7 +19,7 @@ type CalendarPageProps = {
 };
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
-  const { familyId } = await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
   const resolvedSearchParams = await searchParams;
   const rawWeek = Array.isArray(resolvedSearchParams.week)
     ? resolvedSearchParams.week[0]
@@ -37,13 +38,13 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const rangeStart = monthGridDates[0] < weekStart ? monthGridDates[0] : weekStart;
   const rangeEnd = monthGridDates[41] > addDays(weekStart, 6) ? monthGridDates[41] : addDays(weekStart, 6);
 
-  const [locations, meals, members] = await Promise.all([
+  const [locations, meals, members, familyContextPreferences] = await Promise.all([
     prisma.locations.findMany({
       where: {
         family_id: familyId,
         archived_at: null,
       },
-      orderBy: { name: "asc" },
+      orderBy: { created_at: "asc" },
     }),
     prisma.meal_plans.findMany({
       where: {
@@ -65,6 +66,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             display_name: true,
           },
         },
+      },
+    }),
+    prisma.family_context_preferences.findUnique({
+      where: {
+        profile_id_family_id: {
+          profile_id: profileId,
+          family_id: familyId,
+        },
+      },
+      select: {
+        last_selected_location_id: true,
       },
     }),
   ]);
@@ -93,7 +105,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const selectedLocationId = locations.some((l) => l.id === rawLocationId)
     ? rawLocationId!
     : "";
-  const defaultLocationId = selectedLocationId || locations[0].id;
+  const preferredLocationId = getPreferredLocationId(
+    locations,
+    familyContextPreferences?.last_selected_location_id,
+  );
+  const defaultLocationId = selectedLocationId || preferredLocationId || locations[0].id;
   const filteredMeals = selectedLocationId
     ? meals.filter((meal) => meal.location_id === selectedLocationId)
     : meals;

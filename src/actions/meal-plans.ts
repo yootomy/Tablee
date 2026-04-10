@@ -9,26 +9,28 @@ import { getMealWeekHref, getWeekStart, parseDateOnly } from "@/lib/calendar";
 
 type ActionResult = { success: true } | { success: false; error: string };
 
+function normalizeOptionalString(value: FormDataEntryValue | null) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 const mealPlanSchema = z.object({
   mealDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "La date du repas est invalide"),
   mealSlot: z.enum(["lunch", "dinner"]),
   locationId: z.string().uuid("Le lieu sélectionné est invalide"),
-  recipeId: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => value || undefined)
-    .pipe(z.string().uuid("La recette sélectionnée est invalide").optional()),
+  recipeId: z.string().uuid("La recette sélectionnée est invalide").optional(),
   responsibleProfileId: z
     .string()
-    .trim()
-    .optional()
-    .transform((value) => value || undefined)
-    .pipe(z.string().uuid("Le responsable sélectionné est invalide").optional()),
+    .uuid("Le responsable sélectionné est invalide")
+    .optional(),
   title: z.string().trim().optional(),
-  notes: z.string().trim().optional().transform((value) => value || undefined),
+  notes: z.string().trim().optional(),
   status: z.enum(["planned", "done", "canceled"]).default("planned"),
 });
 
@@ -37,11 +39,11 @@ async function resolveMealPlanPayload(formData: FormData, familyId: string) {
     mealDate: formData.get("mealDate"),
     mealSlot: formData.get("mealSlot"),
     locationId: formData.get("locationId"),
-    recipeId: formData.get("recipeId"),
-    responsibleProfileId: formData.get("responsibleProfileId"),
-    title: formData.get("title"),
-    notes: formData.get("notes"),
-    status: formData.get("status"),
+    recipeId: normalizeOptionalString(formData.get("recipeId")),
+    responsibleProfileId: normalizeOptionalString(formData.get("responsibleProfileId")),
+    title: normalizeOptionalString(formData.get("title")),
+    notes: normalizeOptionalString(formData.get("notes")),
+    status: normalizeOptionalString(formData.get("status")) ?? undefined,
   });
 
   if (!parsed.success) {

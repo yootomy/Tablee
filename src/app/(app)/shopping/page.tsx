@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getPreferredLocationId } from "@/lib/location-preferences";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DeleteShoppingItemButton } from "@/components/forms/delete-shopping-item-button";
@@ -71,11 +72,10 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
     );
   }
 
-  const preferredLocationId = locations.some(
-    (location) => location.id === familyContextPreferences?.last_selected_location_id,
-  )
-    ? familyContextPreferences?.last_selected_location_id ?? null
-    : locations[0]?.id ?? null;
+  const preferredLocationId = getPreferredLocationId(
+    locations,
+    familyContextPreferences?.last_selected_location_id,
+  );
 
   const selectedLocation =
     locations.find((location) => location.id === rawLocationId) ??

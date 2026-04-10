@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getPreferredLocationId } from "@/lib/location-preferences";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
 import { SetDefaultLocationButton } from "@/components/forms/set-default-location-button";
@@ -36,11 +37,10 @@ export default async function FamilyLocationsPage() {
     }),
   ]);
 
-  const preferredLocationId = locations.some(
-    (location) => location.id === familyContextPreferences?.last_selected_location_id,
-  )
-    ? familyContextPreferences?.last_selected_location_id ?? null
-    : locations[0]?.id ?? null;
+  const preferredLocationId = getPreferredLocationId(
+    locations,
+    familyContextPreferences?.last_selected_location_id,
+  );
   const preferredLocationName =
     locations.find((location) => location.id === preferredLocationId)?.name ?? null;
 
