@@ -2,38 +2,21 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { RecipesSearchInput } from "@/components/forms/recipes-search-input";
-import { PageHero } from "@/components/layout/page-hero";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, ChefHat, Clock, Users } from "lucide-react";
 
 type RecipesPageProps = {
   searchParams: Promise<{ q?: string | string[] }>;
 };
 
 function formatMinutes(minutes: number | null) {
-  if (!minutes) {
-    return null;
-  }
-
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
-
+  if (!minutes) return null;
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (!remainingMinutes) {
-    return `${hours} h`;
-  }
-
-  return `${hours} h ${remainingMinutes} min`;
+  const rem = minutes % 60;
+  return rem ? `${hours}h${rem}` : `${hours}h`;
 }
 
 export default async function RecipesPage({ searchParams }: RecipesPageProps) {
@@ -49,44 +32,44 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
       family_id: familyId,
       archived_at: null,
       ...(trimmedQuery
-        ? {
-            title: {
-              contains: trimmedQuery,
-              mode: "insensitive",
-            },
-          }
+        ? { title: { contains: trimmedQuery, mode: "insensitive" } }
         : {}),
     },
     orderBy: [{ created_at: "desc" }],
   });
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <PageHero
-        eyebrow="Recettes"
-        title="Votre carnet de cuisine"
-        description="Retrouvez toutes les recettes de la famille active, puis recherchez-les par titre."
-        meta={`${recipes.length} recette${recipes.length > 1 ? "s" : ""}${trimmedQuery ? ` • filtre "${trimmedQuery}"` : ""}`}
-        action={
-          <Link href="/recipes/new" className={buttonVariants({ variant: "outline" })}>
-            Ajouter une recette
+    <div className="space-y-4 p-4 sm:p-6">
+      {/* Header compact */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-primary">Recettes</p>
+          <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
+            <Plus className="size-3.5" />
+            Ajouter
           </Link>
-        }
-      >
-        <RecipesSearchInput initialValue={trimmedQuery} />
-      </PageHero>
+        </div>
+        <h1 className="text-2xl font-bold sm:text-3xl">Carnet de cuisine</h1>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+            <ChefHat className="size-3.5" />
+            {recipes.length} recette{recipes.length > 1 ? "s" : ""}
+            {trimmedQuery ? ` pour "${trimmedQuery}"` : ""}
+          </span>
+        </div>
+        <div className="mt-3">
+          <RecipesSearchInput initialValue={trimmedQuery} />
+        </div>
+      </div>
 
+      {/* Contenu */}
       {recipes.length === 0 ? (
         <EmptyState
-          title={
-            trimmedQuery
-              ? "Aucune recette trouvée"
-              : "Aucune recette pour l'instant"
-          }
+          title={trimmedQuery ? "Aucune recette trouvée" : "Aucune recette pour l'instant"}
           description={
             trimmedQuery
               ? "Essaie un autre mot-clé ou crée une nouvelle recette."
-              : "Ajoute votre première recette structurée pour lancer la suite du MVP."
+              : "Ajoutez votre première recette pour commencer."
           }
           action={
             <Link href="/recipes/new" className={buttonVariants()}>
@@ -95,62 +78,62 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
           }
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {recipes.map((recipe) => {
-            const total =
-              recipe.prep_time_minutes || recipe.cook_time_minutes
-                ? formatMinutes(
-                    (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0),
-                  )
-                : null;
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Toutes les recettes
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({recipes.length})
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="divide-y">
+              {recipes.map((recipe) => {
+                const total =
+                  recipe.prep_time_minutes || recipe.cook_time_minutes
+                    ? formatMinutes(
+                        (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0),
+                      )
+                    : null;
 
-            return (
-              <Link
-                key={recipe.id}
-                href={`/recipes/${recipe.id}`}
-                className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                <Card className="overflow-hidden border-primary/10 shadow-sm transition-all group-hover:border-primary/30 group-hover:bg-accent/20 group-hover:shadow-md">
-                  <div className="relative overflow-hidden border-b border-primary/10 bg-gradient-to-br from-primary/15 via-accent/50 to-primary/5 px-4 py-3">
-                    <div className="absolute right-0 top-0 size-14 translate-x-4 -translate-y-4 rounded-full bg-primary/10" />
-                    <div className="absolute bottom-0 left-0 size-10 -translate-x-4 translate-y-4 rounded-full bg-primary/10" />
-                    <div className="relative space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-                        Recette
-                      </p>
-                      <CardTitle className="text-base transition-colors group-hover:text-primary sm:text-lg">
-                        {recipe.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-1 max-w-xl text-xs text-foreground/70">
-                        {recipe.description?.trim() || "Ouvre la fiche pour voir les ingrédients, les étapes et les détails."}
-                      </CardDescription>
-                    </div>
-                  </div>
-
-                  <CardContent className="p-3">
-                    <div className="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-                      {recipe.servings ? (
-                        <span className="rounded-full bg-muted px-2.5 py-1">
-                          {recipe.servings} portion{recipe.servings > 1 ? "s" : ""}
-                        </span>
-                      ) : null}
-                      {total ? (
-                        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
-                          Total {total}
-                        </span>
-                      ) : null}
-                      {!recipe.servings && !total ? (
-                        <span className="rounded-full bg-muted px-2.5 py-1">
-                          Informations à compléter
-                        </span>
-                      ) : null}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+                return (
+                  <li key={recipe.id}>
+                    <Link
+                      href={`/recipes/${recipe.id}`}
+                      className="group flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium group-hover:text-primary">
+                          {recipe.title}
+                        </p>
+                        {recipe.description?.trim() ? (
+                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                            {recipe.description}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {recipe.servings ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="size-3" />
+                            {recipe.servings}
+                          </span>
+                        ) : null}
+                        {total ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="size-3" />
+                            {total}
+                          </span>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       <Link
