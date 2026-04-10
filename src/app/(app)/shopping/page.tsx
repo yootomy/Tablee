@@ -101,13 +101,6 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
             ) : null}
           </>
         }
-        action={
-          <ShoppingAddItemDialog
-            locationId={selectedLocation.id}
-            locationName={selectedLocation.name}
-            triggerClassName="hidden border-white/20 bg-white/95 text-foreground hover:bg-white md:inline-flex"
-          />
-        }
       >
         {locations.length > 1 ? (
           <form className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

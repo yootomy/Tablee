@@ -36,20 +36,20 @@ export default async function FamilyLocationsPage() {
             {locations.length} lieu{locations.length > 1 ? "x" : ""} actif{locations.length > 1 ? "s" : ""}
           </span>
         }
-        action={
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <FamilySectionNav inverse />
           <Link
             href="/onboarding"
             className={buttonVariants({
               size: "sm",
               variant: "outline",
-              className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+              className: "border-white/15 bg-white/10 text-white hover:bg-white/20",
             })}
           >
             Créer ou rejoindre
           </Link>
-        }
-      >
-        <FamilySectionNav inverse />
+        </div>
       </AppPageHeader>
 
       {/* Contenu */}

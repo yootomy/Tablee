@@ -52,19 +52,6 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
             {trimmedQuery ? ` pour "${trimmedQuery}"` : ""}
           </span>
         }
-        action={
-          <Link
-            href="/recipes/new"
-            className={buttonVariants({
-              size: "sm",
-              variant: "outline",
-              className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
-            })}
-          >
-            <Plus className="size-3.5" />
-            Ajouter
-          </Link>
-        }
       >
         <RecipesSearchInput initialValue={trimmedQuery} />
       </AppPageHeader>
@@ -87,12 +74,24 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Toutes les recettes
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({recipes.length})
-              </span>
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">
+                Toutes les recettes
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({recipes.length})
+                </span>
+              </CardTitle>
+              <Link
+                href="/recipes/new"
+                className={buttonVariants({
+                  size: "sm",
+                  className: "hidden md:inline-flex",
+                })}
+              >
+                <Plus className="size-3.5" />
+                Ajouter
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="divide-y">
