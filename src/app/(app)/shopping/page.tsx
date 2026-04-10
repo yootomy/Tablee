@@ -35,7 +35,7 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
   const [locations, familyContextPreferences] = await Promise.all([
     prisma.locations.findMany({
       where: { family_id: familyId, archived_at: null },
-      orderBy: { name: "asc" },
+      orderBy: { created_at: "asc" },
     }),
     prisma.family_context_preferences.findUnique({
       where: {
