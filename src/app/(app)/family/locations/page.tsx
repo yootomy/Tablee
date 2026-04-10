@@ -4,16 +4,10 @@ import { requireActiveFamily } from "@/lib/auth-utils";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
 import { FamilySectionNav } from "@/components/layout/family-section-nav";
-import { PageHero } from "@/components/layout/page-hero";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapPin, Plus } from "lucide-react";
 
 export default async function FamilyLocationsPage() {
   const { familyId } = await requireActiveFamily();
@@ -21,57 +15,48 @@ export default async function FamilyLocationsPage() {
   const [family, locations] = await Promise.all([
     prisma.families.findUnique({
       where: { id: familyId },
-      select: {
-        id: true,
-        name: true,
-      },
+      select: { id: true, name: true },
     }),
     prisma.locations.findMany({
-      where: {
-        family_id: familyId,
-        archived_at: null,
-      },
+      where: { family_id: familyId, archived_at: null },
       orderBy: [{ created_at: "asc" }],
     }),
   ]);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <PageHero
-        eyebrow="Famille active"
-        title={family?.name ?? "Famille"}
-        description="Les lieux servent de contexte pour les repas, les courses et la suite du MVP."
-        meta={`${locations.length} lieu${locations.length > 1 ? "x" : ""} actif${locations.length > 1 ? "s" : ""}`}
-        action={
-          <Link href="/onboarding" className={buttonVariants({ variant: "outline" })}>
-            Créer ou rejoindre une famille
+    <div className="space-y-4 p-4 sm:p-6">
+      {/* Header compact */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/12 via-accent/80 to-primary/5 p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-primary">Famille active</p>
+          <Link href="/onboarding" className={buttonVariants({ size: "sm", variant: "outline" })}>
+            Créer ou rejoindre
           </Link>
-        }
-      />
+        </div>
+        <h1 className="text-2xl font-bold sm:text-3xl">{family?.name ?? "Famille"}</h1>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-xs text-muted-foreground">
+            <MapPin className="size-3.5" />
+            {locations.length} lieu{locations.length > 1 ? "x" : ""} actif{locations.length > 1 ? "s" : ""}
+          </span>
+        </div>
+      </div>
 
       <FamilySectionNav />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(320px,1fr)_minmax(0,1.6fr)]">
-        <Card className="border-primary/10 bg-primary/5 shadow-sm">
+      {/* Contenu */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* Lieux existants */}
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle>Ajouter un lieu</CardTitle>
-            <CardDescription>
-              Exemple : maison, studio, chalet ou autre endroit de référence.
-            </CardDescription>
+            <CardTitle className="text-base">
+              Lieux actifs
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({locations.length})
+              </span>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <CreateLocationForm />
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/10 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle>Lieux actifs</CardTitle>
-            <CardDescription>
-              Renommez vos lieux existants sans perdre leur historique.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {locations.length === 0 ? (
               <EmptyState
                 title="Aucun lieu"
@@ -82,18 +67,13 @@ export default async function FamilyLocationsPage() {
                 {locations.map((location) => (
                   <div
                     key={location.id}
-                    className="rounded-xl border border-border bg-primary/5 p-4"
+                    className="rounded-lg border p-3"
                   >
-                    <div className="mb-3">
-                      <p className="font-medium">{location.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Créé le{" "}
-                        {new Date(location.created_at).toLocaleDateString("fr-CH", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })}
-                      </p>
+                    <div className="mb-2 flex items-baseline justify-between gap-2">
+                      <p className="text-sm font-medium">{location.name}</p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {new Date(location.created_at).toLocaleDateString("fr-CH")}
+                      </span>
                     </div>
                     <EditLocationForm
                       locationId={location.id}
@@ -103,6 +83,22 @@ export default async function FamilyLocationsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Sidebar : ajout */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Plus className="size-4" />
+              Ajouter un lieu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="mb-3 text-xs text-muted-foreground">
+              Ex : maison, studio, chalet ou autre endroit de référence.
+            </p>
+            <CreateLocationForm />
           </CardContent>
         </Card>
       </div>
