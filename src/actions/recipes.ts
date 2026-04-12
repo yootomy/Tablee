@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getMealWeekHref } from "@/lib/calendar";
 
 type ActionResult =
   | { success: true; recipeId?: string }
@@ -205,19 +206,48 @@ export async function deleteRecipe(recipeId: string): Promise<ActionResult> {
 
   const recipe = await prisma.recipes.findFirst({
     where: { id: recipeId, family_id: familyId, archived_at: null },
-    select: { id: true },
+    select: {
+      id: true,
+      meal_plans: {
+        select: {
+          id: true,
+          meal_date: true,
+          location_id: true,
+        },
+      },
+    },
   });
 
   if (!recipe) {
     return { success: false, error: "La recette demandée est introuvable" };
   }
 
-  await prisma.recipes.update({
-    where: { id: recipeId },
-    data: { archived_at: new Date() },
+  await prisma.$transaction(async (tx) => {
+    if (recipe.meal_plans.length > 0) {
+      await tx.meal_plans.deleteMany({
+        where: {
+          family_id: familyId,
+          recipe_id: recipeId,
+        },
+      });
+    }
+
+    await tx.recipes.update({
+      where: { id: recipeId },
+      data: { archived_at: new Date() },
+    });
   });
 
   revalidatePath("/recipes");
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  revalidatePath("/shopping");
+
+  for (const mealPlan of recipe.meal_plans) {
+    revalidatePath(`/calendar/${mealPlan.id}`);
+    revalidatePath(getMealWeekHref(mealPlan.meal_date, mealPlan.location_id));
+  }
+
   redirect("/recipes");
 }
 

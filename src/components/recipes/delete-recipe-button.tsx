@@ -37,7 +37,8 @@ export function DeleteRecipeButton({
               <p className="mt-1 text-sm text-muted-foreground">
                 Es-tu sur de vouloir supprimer{" "}
                 <strong>{recipeTitle}</strong> ? Cette action est
-                irréversible.
+                irréversible. Si cette recette est déjà utilisée dans des repas,
+                ces repas seront supprimés aussi.
               </p>
             </div>
             <Button
