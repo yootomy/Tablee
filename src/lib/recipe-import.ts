@@ -12,8 +12,8 @@ import type { ImportedRecipeDraft } from "@/types/recipe-import";
 const execFileAsync = promisify(execFile);
 const BASE_PATH = "/tablee";
 const PUBLIC_IMPORTS_DIR = path.join(process.cwd(), "public", "imported", "recipes");
-const YT_DLP_BIN = process.env.YT_DLP_BIN || "yt-dlp";
-const FFMPEG_BIN = process.env.FFMPEG_BIN || "ffmpeg";
+const YT_DLP_BIN = process.env.YT_DLP_BIN;
+const FFMPEG_BIN = process.env.FFMPEG_BIN;
 const OPENAI_RECIPE_IMPORT_MODEL =
   process.env.OPENAI_RECIPE_IMPORT_MODEL || "gpt-4.1-mini";
 const OPENAI_RECIPE_TRANSCRIBE_MODEL =
@@ -119,6 +119,15 @@ async function ensurePublicImportsDir() {
   await fs.mkdir(PUBLIC_IMPORTS_DIR, { recursive: true });
 }
 
+async function pathExists(targetPath: string) {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function storeImageBuffer(buffer: Buffer, extension: string) {
   await ensurePublicImportsDir();
   const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
@@ -165,12 +174,90 @@ async function runCommand(command: string, args: string[], cwd: string) {
   }
 }
 
-async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoMetadata> {
-  const { stdout } = await runCommand(
-    YT_DLP_BIN,
-    ["--dump-single-json", "--no-playlist", "--skip-download", url],
-    cwd,
+async function resolveBinaryPath(kind: "yt-dlp" | "ffmpeg") {
+  const envValue = kind === "yt-dlp" ? YT_DLP_BIN : FFMPEG_BIN;
+
+  if (envValue?.trim()) {
+    return envValue.trim();
+  }
+
+  const candidates =
+    kind === "yt-dlp"
+      ? ["yt-dlp", "/usr/local/bin/yt-dlp", "/usr/bin/yt-dlp"]
+      : ["ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"];
+
+  for (const candidate of candidates) {
+    if (candidate.includes("/") && !(await pathExists(candidate))) {
+      continue;
+    }
+
+    try {
+      await runCommand(
+        candidate,
+        [kind === "yt-dlp" ? "--version" : "-version"],
+        cwdForBinaryChecks(),
+      );
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error(
+    `${kind} n'est pas disponible sur le serveur. Installe-le puis réessaie l'import IA.`,
   );
+}
+
+function cwdForBinaryChecks() {
+  return process.cwd();
+}
+
+function formatCommandError(error: unknown, kind: "yt-dlp" | "ffmpeg") {
+  if (!(error instanceof Error)) {
+    return `Le serveur a rencontré une erreur avec ${kind}.`;
+  }
+
+  const details = [
+    "stdout" in error && typeof error.stdout === "string" ? error.stdout : "",
+    "stderr" in error && typeof error.stderr === "string" ? error.stderr : "",
+    error.message,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  if (details.includes("Too Many Requests") || details.includes("HTTP Error 429")) {
+    return "TikTok limite temporairement la récupération de cette vidéo. Réessaie dans quelques minutes.";
+  }
+
+  if (details.includes("Unsupported URL")) {
+    return "Ce lien n'est pas encore pris en charge par l'import IA.";
+  }
+
+  if (details.includes("Login required") || details.includes("private")) {
+    return "Cette vidéo n'est pas publiquement accessible pour l'import automatique.";
+  }
+
+  if (details.includes("sign in to confirm") || details.includes("unable to download webpage")) {
+    return "La plateforme bloque l'accès automatique à cette vidéo pour le moment.";
+  }
+
+  return `L'import n'a pas pu récupérer la vidéo avec ${kind}.`;
+}
+
+async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoMetadata> {
+  const ytDlpBin = await resolveBinaryPath("yt-dlp");
+  let stdout: string;
+
+  try {
+    ({ stdout } = await runCommand(
+      ytDlpBin,
+      ["--dump-single-json", "--no-playlist", "--skip-download", url],
+      cwd,
+    ));
+  } catch (error) {
+    throw new Error(formatCommandError(error, "yt-dlp"));
+  }
+
   const payload = JSON.parse(stdout) as {
     title?: string | null;
     description?: string | null;
@@ -197,21 +284,26 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
 
 async function downloadSourceVideo(url: string, cwd: string) {
   const template = path.join(cwd, "source.%(ext)s");
+  const ytDlpBin = await resolveBinaryPath("yt-dlp");
 
-  await runCommand(
-    YT_DLP_BIN,
-    [
-      "--no-playlist",
-      "--merge-output-format",
-      "mp4",
-      "-f",
-      "mp4/bestvideo*+bestaudio/best",
-      "-o",
-      template,
-      url,
-    ],
-    cwd,
-  );
+  try {
+    await runCommand(
+      ytDlpBin,
+      [
+        "--no-playlist",
+        "--merge-output-format",
+        "mp4",
+        "-f",
+        "mp4/bestvideo*+bestaudio/best",
+        "-o",
+        template,
+        url,
+      ],
+      cwd,
+    );
+  } catch (error) {
+    throw new Error(formatCommandError(error, "yt-dlp"));
+  }
 
   const entries = await fs.readdir(cwd);
   const candidate = entries.find((entry) => entry.startsWith("source."));
@@ -225,21 +317,26 @@ async function downloadSourceVideo(url: string, cwd: string) {
 
 async function extractFrames(videoPath: string, cwd: string) {
   const pattern = path.join(cwd, "frame-%02d.jpg");
+  const ffmpegBin = await resolveBinaryPath("ffmpeg");
 
-  await runCommand(
-    FFMPEG_BIN,
-    [
-      "-y",
-      "-i",
-      videoPath,
-      "-vf",
-      `fps=1/${FRAME_INTERVAL_SECONDS},scale=960:-1:force_original_aspect_ratio=decrease`,
-      "-frames:v",
-      String(MAX_FRAMES),
-      pattern,
-    ],
-    cwd,
-  );
+  try {
+    await runCommand(
+      ffmpegBin,
+      [
+        "-y",
+        "-i",
+        videoPath,
+        "-vf",
+        `fps=1/${FRAME_INTERVAL_SECONDS},scale=960:-1:force_original_aspect_ratio=decrease`,
+        "-frames:v",
+        String(MAX_FRAMES),
+        pattern,
+      ],
+      cwd,
+    );
+  } catch (error) {
+    throw new Error(formatCommandError(error, "ffmpeg"));
+  }
 
   const files = (await fs.readdir(cwd))
     .filter((entry) => entry.startsWith("frame-") && entry.endsWith(".jpg"))
@@ -259,24 +356,29 @@ async function extractFrames(videoPath: string, cwd: string) {
 
 async function extractAudio(videoPath: string, cwd: string) {
   const audioPath = path.join(cwd, "audio.wav");
+  const ffmpegBin = await resolveBinaryPath("ffmpeg");
 
-  await runCommand(
-    FFMPEG_BIN,
-    [
-      "-y",
-      "-i",
-      videoPath,
-      "-vn",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-c:a",
-      "pcm_s16le",
-      audioPath,
-    ],
-    cwd,
-  );
+  try {
+    await runCommand(
+      ffmpegBin,
+      [
+        "-y",
+        "-i",
+        videoPath,
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        audioPath,
+      ],
+      cwd,
+    );
+  } catch (error) {
+    throw new Error(formatCommandError(error, "ffmpeg"));
+  }
 
   return audioPath;
 }

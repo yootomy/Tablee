@@ -1,6 +1,4 @@
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import logoTablee from "../../../public/logo-tablee-nobg.png";
 
 interface AppBrandProps {
   compact?: boolean;
@@ -16,13 +14,11 @@ export function AppBrand({ compact = false, className }: AppBrandProps) {
           compact ? "size-9" : "size-11",
         )}
       >
-        <Image
-          src={logoTablee}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/tablee/logo-tablee-nobg.png"
           alt="Logo Tablee"
-          width={compact ? 22 : 30}
-          height={compact ? 22 : 30}
           className={cn("object-contain", compact ? "size-[22px]" : "size-[30px]")}
-          priority
         />
       </span>
 
