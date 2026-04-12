@@ -108,12 +108,13 @@ export default async function RecipeDetailPage({
           recipe.description?.trim() ||
           "Une fiche claire à ouvrir seulement quand tu veux tous les détails."
         }
+        backgroundImageUrl={recipeImageUrl ?? undefined}
         badges={
           <>
             {stats.map((s) => (
               <span
                 key={s.label}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90 backdrop-blur-sm"
               >
                 <s.icon className="size-3.5" />
                 {s.label}
@@ -149,42 +150,19 @@ export default async function RecipeDetailPage({
           </>
         }
       >
-        <div
-          className={
-            recipeImageUrl
-              ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end"
-              : "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
-          }
-        >
+        {recipe.source_url ? (
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            {recipe.source_url ? (
-              <a
-                href={recipe.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-white/75 hover:text-white hover:underline"
-              >
-                <ExternalLink className="size-3" />
-                Source originale
-              </a>
-            ) : null}
+            <a
+              href={recipe.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-white/75 hover:text-white hover:underline"
+            >
+              <ExternalLink className="size-3" />
+              Source originale
+            </a>
           </div>
-
-          {recipeImageUrl ? (
-            <div className="w-full lg:justify-self-end lg:max-w-[360px]">
-              <div className="overflow-hidden rounded-[1.6rem] border border-white/20 bg-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.2)] backdrop-blur-sm">
-                <div className="aspect-[16/9] w-full overflow-hidden bg-white/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={recipeImageUrl}
-                    alt={recipe.title}
-                    className="size-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
       </AppPageHeader>
 
       {/* Contenu principal */}

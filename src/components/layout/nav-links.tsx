@@ -11,8 +11,8 @@ import {
 
 const links = [
   { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
-  { href: "/calendar", label: "Repas", icon: CalendarDays },
   { href: "/recipes", label: "Recettes", icon: ChefHat },
+  { href: "/calendar", label: "Repas", icon: CalendarDays },
   { href: "/shopping", label: "Courses", icon: ShoppingCart },
 ];
 

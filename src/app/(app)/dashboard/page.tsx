@@ -110,64 +110,64 @@ export default async function DashboardPage() {
 
       {/* Contenu principal */}
       <div className="grid items-start gap-6 lg:grid-cols-2">
-        {/* Prochains repas */}
+        {/* Recettes récentes */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Prochains repas</CardTitle>
-              <Link href="/calendar" className="flex items-center gap-1 text-xs text-primary hover:underline">
+              <CardTitle className="text-base">
+                Dernières recettes
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({recipeCount})</span>
+              </CardTitle>
+              <Link href="/recipes" className="flex items-center gap-1 text-xs text-primary hover:underline">
                 Tout voir <ArrowRight className="size-3" />
               </Link>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {upcomingMeals.length === 0 ? (
+            {recentRecipes.length === 0 ? (
               <EmptyState
-                title="Aucun repas prévu"
-                description="Planifiez vos repas depuis le calendrier."
+                icon={<ChefHat className="size-10 text-muted-foreground/40" />}
+                title="Aucune recette"
+                description="Créez votre première recette."
                 action={
-                  <Link href="/calendar/new" className={buttonVariants({ size: "sm" })}>
+                  <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
                     <Plus className="size-3.5" />
-                    Planifier
+                    Ajouter
                   </Link>
                 }
               />
             ) : (
               <div className="space-y-3">
-                {upcomingMeals.map((meal) => {
-                  const responsible =
-                    meal.family_members_meal_plans_family_id_responsible_profile_idTofamily_members
-                      ?.profiles_family_members_profile_idToprofiles.display_name;
+                {recentRecipes.map((recipe) => {
+                  const imageUrl = resolveMediaUrl(recipe.image_url);
+
                   return (
                     <Link
-                      key={meal.id}
-                      href={`/calendar/${meal.id}`}
-                      className="group block rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                      key={recipe.id}
+                      href={`/recipes/${recipe.id}`}
+                      className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
                     >
-                      <div className="min-w-0 space-y-1.5">
-                        <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">{meal.title}</p>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                            {new Date(meal.meal_date).toLocaleDateString("fr-FR", {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "short",
-                            })}
+                      <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
+                        {imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imageUrl}
+                            alt={recipe.title}
+                            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <ChefHat className="size-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
+                          {recipe.title}
+                        </p>
+                        {recipe.servings ? (
+                          <span className="mt-1 inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                            {recipe.servings} p.
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                            {meal.meal_slot === "lunch" ? "Midi" : "Soir"}
-                          </span>
-                          {meal.locations ? (
-                            <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                              {meal.locations.name}
-                            </span>
-                          ) : null}
-                          {responsible ? (
-                            <span className="text-xs text-muted-foreground">
-                              {responsible}
-                            </span>
-                          ) : null}
-                        </div>
+                        ) : null}
                       </div>
                     </Link>
                   );
@@ -179,64 +179,64 @@ export default async function DashboardPage() {
 
         {/* Colonne droite */}
         <div className="space-y-6">
-          {/* Recettes récentes */}
+          {/* Prochains repas */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">
-                  Dernières recettes
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">({recipeCount})</span>
-                </CardTitle>
-                <Link href="/recipes" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                <CardTitle className="text-base">Prochains repas</CardTitle>
+                <Link href="/calendar" className="flex items-center gap-1 text-xs text-primary hover:underline">
                   Tout voir <ArrowRight className="size-3" />
                 </Link>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              {recentRecipes.length === 0 ? (
+              {upcomingMeals.length === 0 ? (
                 <EmptyState
-                  icon={<ChefHat className="size-10 text-muted-foreground/40" />}
-                  title="Aucune recette"
-                  description="Créez votre première recette."
+                  title="Aucun repas prévu"
+                  description="Planifiez vos repas depuis le calendrier."
                   action={
-                    <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
+                    <Link href="/calendar/new" className={buttonVariants({ size: "sm" })}>
                       <Plus className="size-3.5" />
-                      Ajouter
+                      Planifier
                     </Link>
                   }
                 />
               ) : (
                 <div className="space-y-3">
-                  {recentRecipes.map((recipe) => {
-                    const imageUrl = resolveMediaUrl(recipe.image_url);
-
+                  {upcomingMeals.map((meal) => {
+                    const responsible =
+                      meal.family_members_meal_plans_family_id_responsible_profile_idTofamily_members
+                        ?.profiles_family_members_profile_idToprofiles.display_name;
                     return (
                       <Link
-                        key={recipe.id}
-                        href={`/recipes/${recipe.id}`}
-                        className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                        key={meal.id}
+                        href={`/calendar/${meal.id}`}
+                        className="group block rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
                       >
-                        <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
-                          {imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={imageUrl}
-                              alt={recipe.title}
-                              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                          ) : (
-                            <ChefHat className="size-5 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
-                            {recipe.title}
-                          </p>
-                          {recipe.servings ? (
-                            <span className="mt-1 inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                              {recipe.servings} p.
+                        <div className="min-w-0 space-y-1.5">
+                          <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">{meal.title}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                              {new Date(meal.meal_date).toLocaleDateString("fr-FR", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                              })}
                             </span>
-                          ) : null}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                              {meal.meal_slot === "lunch" ? "Midi" : "Soir"}
+                            </span>
+                            {meal.locations ? (
+                              <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                                {meal.locations.name}
+                              </span>
+                            ) : null}
+                            {responsible ? (
+                              <span className="text-xs text-muted-foreground">
+                                {responsible}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </Link>
                     );
