@@ -49,6 +49,15 @@ const recipePayloadSchema = z.object({
     .optional()
     .transform((value) => value || undefined)
     .pipe(z.string().url("Le lien source doit être une URL valide").optional()),
+  imageUrl: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined)
+    .refine(
+      (value) => !value || value.startsWith("/") || z.string().url().safeParse(value).success,
+      "L'image de recette importée est invalide",
+    ),
   ingredients: z
     .array(ingredientSchema)
     .min(1, "Ajoutez au moins un ingrédient"),
@@ -131,6 +140,7 @@ function parseRecipePayload(formData: FormData) {
     cookTimeMinutes: parseOptionalInteger(formData.get("cookTimeMinutes")),
     servings: parseOptionalInteger(formData.get("servings")),
     sourceUrl: formData.get("sourceUrl"),
+    imageUrl: formData.get("imageUrl"),
     ingredients: filteredIngredients,
     steps: filteredSteps,
   });
@@ -167,6 +177,7 @@ export async function createRecipe(formData: FormData): Promise<ActionResult> {
         cook_time_minutes: payload.data.cookTimeMinutes,
         servings: payload.data.servings,
         source_url: payload.data.sourceUrl,
+        image_url: payload.data.imageUrl,
       },
     });
 
@@ -288,6 +299,7 @@ export async function updateRecipe(formData: FormData): Promise<ActionResult> {
         cook_time_minutes: payload.data.cookTimeMinutes,
         servings: payload.data.servings,
         source_url: payload.data.sourceUrl,
+        image_url: payload.data.imageUrl,
         updated_by_profile_id: profileId,
       },
     });

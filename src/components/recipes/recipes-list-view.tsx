@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -32,14 +32,14 @@ function formatMinutes(minutes: number | null) {
 const VIEW_KEY = "tablee-recipes-view";
 
 export function RecipesListView({ recipes }: RecipesListViewProps) {
-  const [view, setView] = useState<"list" | "grid">("list");
-
-  useEffect(() => {
-    const saved = localStorage.getItem(VIEW_KEY);
-    if (saved === "grid" || saved === "list") {
-      setView(saved);
+  const [view, setView] = useState<"list" | "grid">(() => {
+    if (typeof window === "undefined") {
+      return "list";
     }
-  }, []);
+
+    const saved = window.localStorage.getItem(VIEW_KEY);
+    return saved === "grid" || saved === "list" ? saved : "list";
+  });
 
   function toggleView(next: "list" | "grid") {
     setView(next);
@@ -183,6 +183,7 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
           >
             {/* Image or placeholder */}
             {recipe.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={recipe.image_url}
                 alt={recipe.title}

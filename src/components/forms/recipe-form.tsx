@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormSection } from "@/components/shared/form-section";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, X } from "lucide-react";
+import { ImagePlus, Plus, Trash2, X } from "lucide-react";
+import type { RecipeFormDraft } from "@/types/recipe-import";
 
 type IngredientInput = {
   name: string;
@@ -24,16 +25,7 @@ type StepInput = {
 interface RecipeFormProps {
   mode: "create" | "edit";
   recipeId?: string;
-  initialValues?: {
-    title: string;
-    description: string;
-    prepTimeMinutes: string;
-    cookTimeMinutes: string;
-    servings: string;
-    sourceUrl: string;
-    ingredients: IngredientInput[];
-    steps: StepInput[];
-  };
+  initialValues?: RecipeFormDraft;
 }
 
 const blankIngredient = (): IngredientInput => ({
@@ -54,6 +46,7 @@ const defaultValues = {
   cookTimeMinutes: "",
   servings: "",
   sourceUrl: "",
+  imageUrl: "",
   ingredients: [],
   steps: [blankStep()],
 };
@@ -211,6 +204,7 @@ export function RecipeForm({
   );
   const [servings, setServings] = useState(initialValues.servings);
   const [sourceUrl, setSourceUrl] = useState(initialValues.sourceUrl);
+  const [imageUrl, setImageUrl] = useState(initialValues.imageUrl);
   const [ingredients, setIngredients] = useState(initialValues.ingredients);
   const [steps, setSteps] = useState(
     initialValues.steps.length > 0 ? initialValues.steps : [blankStep()],
@@ -309,12 +303,40 @@ export function RecipeForm({
           value={JSON.stringify(ingredients)}
           readOnly
         />
+        <input type="hidden" name="imageUrl" value={imageUrl} readOnly />
         <input type="hidden" name="steps" value={JSON.stringify(steps)} readOnly />
 
         <FormSection
           title="Informations"
           description="Les infos clés pour reconnaître la recette d&apos;un coup d&apos;œil."
         >
+            {imageUrl ? (
+              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="relative aspect-[16/8] w-full overflow-hidden bg-muted/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt={title || "Image importée de la recette"}
+                    className="size-full object-cover"
+                  />
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <ImagePlus className="size-4 text-primary" />
+                    Image importée automatiquement
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setImageUrl("")}
+                  >
+                    Retirer l&apos;image
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {/* Titre */}
             <div className="space-y-2">
               <Label htmlFor="title">Titre</Label>

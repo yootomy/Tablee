@@ -57,6 +57,7 @@ export default async function EditRecipePage({ params }: EditRecipePageProps) {
           cookTimeMinutes: recipe.cook_time_minutes?.toString() ?? "",
           servings: recipe.servings?.toString() ?? "",
           sourceUrl: recipe.source_url ?? "",
+          imageUrl: recipe.image_url ?? "",
           ingredients: recipe.recipe_ingredients.map((ingredient) => ({
             name: ingredient.name,
             quantity:
