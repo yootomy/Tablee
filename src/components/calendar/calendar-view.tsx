@@ -47,6 +47,19 @@ type CalendarViewProps = {
   locations: { id: string; name: string }[];
 };
 
+function getInitialSelectedDay(
+  view: CalendarDisplayMode,
+  currentDate: Date,
+  weekDates: Date[],
+  today: Date,
+) {
+  if (view === "month") {
+    return isSameMonth(currentDate, today) ? today : currentDate;
+  }
+
+  return weekDates.find((date) => isSameDay(date, today)) ?? weekDates[0];
+}
+
 function getSlotLabel(slot: MealSlot) {
   return slot === "lunch" ? "MIDI" : "SOIR";
 }
@@ -80,7 +93,7 @@ export function CalendarView({
   const weekDates = getWeekDates(weekStart);
   const monthGridDates = getMonthGridDates(currentDate);
   const [selectedDay, setSelectedDay] = useState(
-    () => weekDates.find((date) => isSameDay(date, today)) ?? weekDates[0],
+    () => getInitialSelectedDay(view, currentDate, weekDates, today),
   );
 
   function pushCalendarState(next: {
@@ -143,6 +156,14 @@ export function CalendarView({
   const pastMeals = [...sortedMeals]
     .filter((meal) => formatDateKey(meal.meal_date) < todayKey)
     .reverse();
+  const selectedDayMeals =
+    mealsByDateKey.get(formatDateKey(selectedDay))?.sort((a, b) => {
+      if (a.meal_slot === b.meal_slot) {
+        return 0;
+      }
+
+      return a.meal_slot === "lunch" ? -1 : 1;
+    }) ?? [];
 
   function navigateWeek(direction: number) {
     pushCalendarState({
@@ -593,6 +614,7 @@ export function CalendarView({
                 const dateKey = formatDateKey(date);
                 const isCurrentMonth = isSameMonth(date, currentDate);
                 const isToday = isSameDay(date, today);
+                const isSelected = isSameDay(date, selectedDay);
                 const dayMeals = mealsByDateKey.get(dateKey) ?? [];
                 const lunchMeals = dayMeals.filter((meal) => meal.meal_slot === "lunch");
                 const dinnerMeals = dayMeals.filter((meal) => meal.meal_slot === "dinner");
@@ -600,13 +622,10 @@ export function CalendarView({
                 return (
                   <button
                     key={dateKey + index}
-                    onClick={() => {
-                      setSelectedDay(date);
-                      pushCalendarState({ date, view: "week" });
-                    }}
+                    onClick={() => setSelectedDay(date)}
                     className={`min-h-[100px] border-l border-t border-border p-1.5 text-left transition-colors hover:bg-accent/30 first:border-l-0 [&:nth-child(-n+7)]:border-t-0 ${
                       isToday ? "bg-accent/20" : ""
-                    } ${!isCurrentMonth ? "opacity-40" : ""}`}
+                    } ${isSelected ? "bg-primary/8 ring-1 ring-primary/30 ring-inset" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
                   >
                     <span
                       className={`inline-flex size-6 items-center justify-center text-xs font-medium ${
@@ -663,18 +682,16 @@ export function CalendarView({
                 const dateKey = formatDateKey(date);
                 const isCurrentMonth = isSameMonth(date, currentDate);
                 const isToday = isSameDay(date, today);
+                const isSelected = isSameDay(date, selectedDay);
                 const dayMeals = mealsByDateKey.get(dateKey) ?? [];
 
                 return (
                   <button
                     key={dateKey + index}
-                    onClick={() => {
-                      setSelectedDay(date);
-                      pushCalendarState({ date, view: "week" });
-                    }}
+                    onClick={() => setSelectedDay(date)}
                     className={`flex min-h-[3rem] flex-col items-center justify-center gap-1 border-l border-t border-border px-1 py-2 transition-colors first:border-l-0 [&:nth-child(7n+1)]:border-l-0 [&:nth-child(-n+14)]:border-t-0 ${
                       !isCurrentMonth ? "opacity-30" : ""
-                    }`}
+                    } ${isSelected ? "bg-primary/8 ring-1 ring-primary/30 ring-inset" : ""}`}
                   >
                     <span
                       className={`flex size-6 items-center justify-center text-xs ${
@@ -694,11 +711,37 @@ export function CalendarView({
                     ) : null}
                   </button>
                 );
-              })}
+                })}
+              </div>
             </div>
-          </div>
-        </>
-      )}
+
+            {isSameMonth(selectedDay, currentDate) && selectedDayMeals.length > 0 ? (
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold capitalize">
+                      {selectedDay.toLocaleDateString("fr-FR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Les repas planifiés pour ce jour sélectionné.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-foreground">
+                    {selectedDayMeals.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {selectedDayMeals.map((meal) => renderListMealCard(meal))}
+                </div>
+              </section>
+            ) : null}
+          </>
+        )}
 
       {view === "list" && (
         <div className="space-y-6">

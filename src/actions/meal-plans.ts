@@ -137,12 +137,72 @@ function revalidateMealPlanViews(date: Date) {
   revalidatePath(getMealWeekHref(getWeekStart(date)));
 }
 
+async function ensureMealSlotAvailability(args: {
+  familyId: string;
+  mealDate: Date;
+  mealSlot: "lunch" | "dinner";
+  locationId: string;
+  mealPlanIdToIgnore?: string;
+}) {
+  const conflictingMeal = await prisma.meal_plans.findFirst({
+    where: {
+      family_id: args.familyId,
+      meal_date: args.mealDate,
+      meal_slot: args.mealSlot,
+      location_id: args.locationId,
+      ...(args.mealPlanIdToIgnore
+        ? {
+            id: {
+              not: args.mealPlanIdToIgnore,
+            },
+          }
+        : {}),
+    },
+    include: {
+      locations: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!conflictingMeal) {
+    return null;
+  }
+
+  return {
+    success: false as const,
+    error: `Un repas est déjà prévu pour ${
+      args.mealSlot === "lunch" ? "le midi" : "le soir"
+    } au lieu ${conflictingMeal.locations.name} le ${conflictingMeal.meal_date.toLocaleDateString(
+      "fr-CH",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      },
+    )}. Modifie le repas existant ou choisis un autre lieu.`,
+  };
+}
+
 export async function createMealPlan(formData: FormData): Promise<ActionResult> {
   const { familyId, profileId } = await requireActiveFamily();
   const payload = await resolveMealPlanPayload(formData, familyId);
 
   if (!payload.success) {
     return payload;
+  }
+
+  const conflict = await ensureMealSlotAvailability({
+    familyId,
+    mealDate: payload.data.mealDate,
+    mealSlot: payload.data.mealSlot,
+    locationId: payload.data.locationId,
+  });
+
+  if (conflict) {
+    return conflict;
   }
 
   await prisma.meal_plans.create({
@@ -192,6 +252,18 @@ export async function updateMealPlan(formData: FormData): Promise<ActionResult> 
 
   if (!payload.success) {
     return payload;
+  }
+
+  const conflict = await ensureMealSlotAvailability({
+    familyId,
+    mealDate: payload.data.mealDate,
+    mealSlot: payload.data.mealSlot,
+    locationId: payload.data.locationId,
+    mealPlanIdToIgnore: mealPlanId,
+  });
+
+  if (conflict) {
+    return conflict;
   }
 
   await prisma.meal_plans.update({
