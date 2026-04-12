@@ -25,6 +25,7 @@ const GEMINI_RECIPE_IMPORT_MODEL =
   process.env.GEMINI_RECIPE_IMPORT_MODEL || "gemini-2.5-flash";
 const GEMINI_FILE_POLL_INTERVAL_MS = 4000;
 const GEMINI_FILE_POLL_MAX_ATTEMPTS = 45;
+const GEMINI_ANALYSIS_MAX_ATTEMPTS = 3;
 const OPENAI_RECIPE_IMPORT_MODEL =
   process.env.OPENAI_RECIPE_IMPORT_MODEL || "gpt-4.1-mini";
 const OPENAI_RECIPE_TRANSCRIBE_MODEL =
@@ -642,6 +643,29 @@ async function waitForGeminiFileActive(
   );
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableGeminiError(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const status =
+    "status" in error && typeof error.status === "number" ? error.status : null;
+  const message =
+    "message" in error && typeof error.message === "string" ? error.message : "";
+
+  return (
+    status === 429 ||
+    status === 500 ||
+    status === 503 ||
+    message.includes("high demand") ||
+    message.includes("UNAVAILABLE")
+  );
+}
+
 async function analyzeRecipeFromVideoWithGemini(input: {
   metadata: SocialVideoMetadata;
   videoPath: string;
@@ -660,27 +684,52 @@ async function analyzeRecipeFromVideoWithGemini(input: {
       throw new Error("Gemini a bien reçu la vidéo, mais n'a pas renvoyé d'URI exploitable.");
     }
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_RECIPE_IMPORT_MODEL,
-      contents: createUserContent([
-        createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
-        [
-          "Tu analyses une vidéo de recette publiée sur un réseau social.",
-          "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
-          "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
-          "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
-          "Ne renvoie que le JSON demandé par le schéma.",
-          "",
-          `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
-        ].join("\n"),
-      ]),
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: geminiRecipeJsonSchema,
-      },
-    });
+    let lastError: unknown;
 
-    return recipeImportResponseSchema.parse(JSON.parse(response.text || "{}"));
+    for (
+      let attempt = 1;
+      attempt <= GEMINI_ANALYSIS_MAX_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        const response = await ai.models.generateContent({
+          model: GEMINI_RECIPE_IMPORT_MODEL,
+          contents: createUserContent([
+            createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
+            [
+              "Tu analyses une vidéo de recette publiée sur un réseau social.",
+              "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
+              "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
+              "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
+              "Ne renvoie que le JSON demandé par le schéma.",
+              "",
+              `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
+            ].join("\n"),
+          ]),
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: geminiRecipeJsonSchema,
+          },
+        });
+
+        return recipeImportResponseSchema.parse(JSON.parse(response.text || "{}"));
+      } catch (error) {
+        lastError = error;
+
+        if (
+          attempt === GEMINI_ANALYSIS_MAX_ATTEMPTS ||
+          !isRetryableGeminiError(error)
+        ) {
+          throw error;
+        }
+
+        await sleep(1200 * attempt);
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Gemini n'a pas réussi à analyser la vidéo.");
   } finally {
     if (uploadedFile.name) {
       try {
