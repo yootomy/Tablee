@@ -147,17 +147,36 @@ export default async function RecipeDetailPage({
           </>
         }
       >
-        {recipe.source_url ? (
-          <a
-            href={recipe.source_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-white/75 hover:text-white hover:underline"
-          >
-            <ExternalLink className="size-3" />
-            Source originale
-          </a>
-        ) : null}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            {recipe.source_url ? (
+              <a
+                href={recipe.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-white/75 hover:text-white hover:underline"
+              >
+                <ExternalLink className="size-3" />
+                Source originale
+              </a>
+            ) : null}
+          </div>
+
+          {recipe.image_url ? (
+            <div className="w-full sm:w-44">
+              <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-lg backdrop-blur-sm">
+                <div className="aspect-[16/10] w-full overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={recipe.image_url}
+                    alt={recipe.title}
+                    className="size-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </AppPageHeader>
 
       {/* Contenu principal */}

@@ -127,8 +127,17 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
             href={`/recipes/${recipe.id}`}
             className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
           >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <ChefHat className="size-5 text-primary" />
+            <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
+              {recipe.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={recipe.image_url}
+                  alt={recipe.title}
+                  className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <ChefHat className="size-5 text-primary" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">

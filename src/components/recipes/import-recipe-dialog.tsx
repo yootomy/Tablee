@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { importRecipeFromUrl } from "@/actions/recipe-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,30 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const estimated = Math.round(100 * (1 - Math.exp(-elapsed / 12000)));
+      setProgress((current) => Math.max(current, Math.min(96, estimated)));
+    }, 350);
+
+    return () => window.clearInterval(interval);
+  }, [loading]);
+
+  function getProgressLabel(value: number) {
+    if (value < 20) return "Récupération du lien social...";
+    if (value < 45) return "Téléchargement de la vidéo...";
+    if (value < 75) return "Analyse de la vidéo et de l'audio...";
+    return "Préparation du brouillon de recette...";
+  }
 
   async function handleSubmit() {
     if (!url.trim()) {
@@ -24,6 +47,7 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
       return;
     }
 
+    setProgress(4);
     setLoading(true);
     setError(null);
 
@@ -35,11 +59,15 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
     if (!result.success) {
       setError(result.error);
       setLoading(false);
+      setProgress(0);
       return;
     }
 
+    setProgress(100);
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
     onImported(result.draft);
     setLoading(false);
+    setProgress(0);
     setOpen(false);
     setUrl("");
   }
@@ -126,11 +154,35 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
                 </div>
               ) : null}
 
+              {loading ? (
+                <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">
+                      {getProgressLabel(progress)}
+                    </p>
+                    <span className="text-sm font-semibold text-primary">
+                      {progress}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-primary/10">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Progression estimée pendant que Tablee récupère le média et
+                    prépare le brouillon.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setOpen(false)}
+                  disabled={loading}
                 >
                   Annuler
                 </Button>
