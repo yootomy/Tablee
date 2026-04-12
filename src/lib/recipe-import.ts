@@ -13,11 +13,13 @@ import {
 } from "@google/genai";
 import OpenAI from "openai";
 import { z } from "zod";
+import {
+  getRecipeMediaUrl,
+  RECIPE_MEDIA_STORAGE_DIR,
+} from "@/lib/recipe-media-storage";
 import type { ImportedRecipeDraft } from "@/types/recipe-import";
 
 const execFileAsync = promisify(execFile);
-const BASE_PATH = "/tablee";
-const PUBLIC_IMPORTS_DIR = path.join(process.cwd(), "public", "imported", "recipes");
 const YT_DLP_BIN = process.env.YT_DLP_BIN;
 const FFMPEG_BIN = process.env.FFMPEG_BIN;
 const AI_RECIPE_IMPORT_PROVIDER = process.env.AI_RECIPE_IMPORT_PROVIDER;
@@ -272,7 +274,7 @@ function extensionFromUrl(url: string) {
 }
 
 async function ensurePublicImportsDir() {
-  await fs.mkdir(PUBLIC_IMPORTS_DIR, { recursive: true });
+  await fs.mkdir(RECIPE_MEDIA_STORAGE_DIR, { recursive: true });
 }
 
 async function pathExists(targetPath: string) {
@@ -287,9 +289,9 @@ async function pathExists(targetPath: string) {
 async function storeImageBuffer(buffer: Buffer, extension: string) {
   await ensurePublicImportsDir();
   const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-  const destination = path.join(PUBLIC_IMPORTS_DIR, filename);
+  const destination = path.join(RECIPE_MEDIA_STORAGE_DIR, filename);
   await fs.writeFile(destination, buffer);
-  return `${BASE_PATH}/imported/recipes/${filename}`;
+  return getRecipeMediaUrl(filename);
 }
 
 async function downloadAndStoreImage(url: string) {
