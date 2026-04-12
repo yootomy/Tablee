@@ -105,7 +105,7 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
   const completedItems = items.filter((item) => item.is_completed);
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <AppPageHeader
         eyebrow="Courses"
         title={selectedLocation.name}
@@ -159,43 +159,37 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
               description="Ajoutez un article ou envoyez les ingrédients d'une recette."
             />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {pendingItems.map((item) => {
                 const quantity = formatShoppingQuantity(item);
-                const createdBy =
-                  item.family_members_shopping_items_family_id_created_by_profile_idTofamily_members
-                    .profiles_family_members_profile_idToprofiles.display_name;
-                const extraInfo = [
-                  item.comment ? `Note : ${item.comment}` : null,
-                  item.recipes ? `Depuis la recette : ${item.recipes.title}` : null,
-                  item.meal_plans ? `Repas lié : ${item.meal_plans.title}` : null,
-                  createdBy ? `Ajouté par : ${createdBy}` : null,
-                ].filter(Boolean) as string[];
 
                 return (
                   <div
                     key={item.id}
-                    className="flex gap-2.5 rounded-xl border border-border p-2.5 sm:p-3"
+                    className="flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
                   >
                     <ShoppingItemToggle itemId={item.id} checked={item.is_completed} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium leading-5">{item.name}</p>
+                          <p className="text-base font-medium leading-snug sm:text-sm">{item.name}</p>
                           {quantity ? (
-                            <p className="mt-0.5 text-xs text-muted-foreground">{quantity}</p>
+                            <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                              {quantity}
+                            </span>
                           ) : null}
-                          {extraInfo.length > 0 ? (
-                            <details className="mt-1.5">
-                              <summary className="cursor-pointer text-xs font-medium text-primary/80 hover:text-primary">
-                                Plus d&apos;infos
-                              </summary>
-                              <div className="mt-1 space-y-1 rounded-xl bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                                {extraInfo.map((line) => (
-                                  <p key={line}>{line}</p>
-                                ))}
-                              </div>
-                            </details>
+                          {item.recipes ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Recette : <span className="font-medium text-foreground/70">{item.recipes.title}</span>
+                            </p>
+                          ) : null}
+                          {item.meal_plans ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Repas : <span className="font-medium text-foreground/70">{item.meal_plans.title}</span>
+                            </p>
+                          ) : null}
+                          {item.comment ? (
+                            <p className="mt-1 text-xs italic text-muted-foreground">{item.comment}</p>
                           ) : null}
                         </div>
                         <DeleteShoppingItemButton itemId={item.id} />
@@ -220,45 +214,37 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                   <span className="ml-2 text-sm font-normal">({completedItems.length})</span>
                 </CardTitle>
               </summary>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-3">
                 {completedItems.map((item) => {
                   const quantity = formatShoppingQuantity(item);
                   const completedBy =
                     item.family_members_shopping_items_family_id_completed_by_profile_idTofamily_members
                       ?.profiles_family_members_profile_idToprofiles.display_name;
-                  const extraInfo = [
-                    completedBy ? `Validé par : ${completedBy}` : null,
-                    item.completed_at
-                      ? `Le ${new Date(item.completed_at).toLocaleDateString("fr-CH")}`
-                      : null,
-                  ].filter(Boolean) as string[];
 
                   return (
                     <div
                       key={item.id}
-                      className="flex gap-2.5 rounded-xl border border-border/50 bg-muted/20 p-2.5 sm:p-3"
+                      className="flex items-start gap-3 rounded-xl border border-border/50 bg-muted/20 p-3.5 sm:p-4"
                     >
                       <ShoppingItemToggle itemId={item.id} checked={item.is_completed} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium leading-5 line-through decoration-muted-foreground/60">
+                            <p className="text-base font-medium leading-snug line-through decoration-muted-foreground/60 sm:text-sm">
                               {item.name}
                             </p>
                             {quantity ? (
-                              <p className="mt-0.5 text-xs text-muted-foreground">{quantity}</p>
+                              <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground opacity-60">
+                                {quantity}
+                              </span>
                             ) : null}
-                            {extraInfo.length > 0 ? (
-                              <details className="mt-1.5">
-                                <summary className="cursor-pointer text-xs font-medium text-primary/80 hover:text-primary">
-                                  Plus d&apos;infos
-                                </summary>
-                                <div className="mt-1 space-y-1 rounded-xl bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                                  {extraInfo.map((line) => (
-                                    <p key={line}>{line}</p>
-                                  ))}
-                                </div>
-                              </details>
+                            {completedBy ? (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Validé par <span className="font-medium text-foreground/70">{completedBy}</span>
+                                {item.completed_at ? (
+                                  <> le {new Date(item.completed_at).toLocaleDateString("fr-CH")}</>
+                                ) : null}
+                              </p>
                             ) : null}
                           </div>
                           <DeleteShoppingItemButton itemId={item.id} />

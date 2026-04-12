@@ -38,7 +38,7 @@ export function ShoppingLocationSwitcher({
   }
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <div className="flex items-center gap-2 text-sm text-white/75">
         <MapPin className="size-4 shrink-0" />
         <span>Lieu actif</span>

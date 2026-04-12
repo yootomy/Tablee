@@ -108,26 +108,7 @@ export default async function DashboardPage() {
             </span>
           </>
         }
-      >
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <Link href="/recipes/new" className={buttonVariants({ size: "sm" })}>
-            <Plus className="size-3.5" />
-            Recette
-          </Link>
-          <Link href="/calendar/new" className={buttonVariants({ size: "sm" })}>
-            <Plus className="size-3.5" />
-            Repas
-          </Link>
-          <Link href="/shopping" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
-            <ShoppingCart className="size-3.5" />
-            Courses
-          </Link>
-          <Link href="/profile" className={buttonVariants({ variant: "outline", size: "sm", className: "border-white/20 bg-white/95 text-foreground hover:bg-white" })}>
-            <Users className="size-3.5" />
-            Famille
-          </Link>
-        </div>
-      </AppPageHeader>
+      />
 
       {/* Contenu principal */}
       <div className="grid items-start gap-4 lg:grid-cols-2">

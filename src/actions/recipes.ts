@@ -200,6 +200,27 @@ export async function createRecipe(formData: FormData): Promise<ActionResult> {
   redirect(`/recipes/${recipe.id}`);
 }
 
+export async function deleteRecipe(recipeId: string): Promise<ActionResult> {
+  const { familyId } = await requireActiveFamily();
+
+  const recipe = await prisma.recipes.findFirst({
+    where: { id: recipeId, family_id: familyId, archived_at: null },
+    select: { id: true },
+  });
+
+  if (!recipe) {
+    return { success: false, error: "La recette demandée est introuvable" };
+  }
+
+  await prisma.recipes.update({
+    where: { id: recipeId },
+    data: { archived_at: new Date() },
+  });
+
+  revalidatePath("/recipes");
+  redirect("/recipes");
+}
+
 export async function updateRecipe(formData: FormData): Promise<ActionResult> {
   const { familyId, profileId } = await requireActiveFamily();
   const recipeId = formData.get("recipeId");

@@ -201,6 +201,7 @@ model recipes {
   cook_time_minutes                                                      Int?
   servings                                                               Int?
   source_url                                                             String?
+  image_url                                                              String?
   archived_at                                                            DateTime?            @db.Timestamptz(6)
   created_at                                                             DateTime             @default(now()) @db.Timestamptz(6)
   updated_at                                                             DateTime             @default(now()) @db.Timestamptz(6)

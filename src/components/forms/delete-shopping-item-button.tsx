@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteShoppingItem } from "@/actions/shopping";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 interface DeleteShoppingItemButtonProps {
   itemId: string;
@@ -29,8 +30,15 @@ export function DeleteShoppingItemButton({
   return (
     <form action={handleSubmit}>
       <input type="hidden" name="itemId" value={itemId} />
-      <Button type="submit" variant="ghost" size="sm" disabled={loading}>
-        {loading ? "Suppression..." : "Supprimer"}
+      <Button
+        type="submit"
+        variant="ghost"
+        size="icon-sm"
+        disabled={loading}
+        className="text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+        aria-label="Supprimer cet article"
+      >
+        <Trash2 className="size-4" />
       </Button>
     </form>
   );

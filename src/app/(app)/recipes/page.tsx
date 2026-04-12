@@ -2,23 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { RecipesSearchInput } from "@/components/forms/recipes-search-input";
+import { RecipesListView } from "@/components/recipes/recipes-list-view";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ChefHat, Clock, Users } from "lucide-react";
+import { Plus, ChefHat } from "lucide-react";
 
 type RecipesPageProps = {
   searchParams: Promise<{ q?: string | string[] }>;
 };
-
-function formatMinutes(minutes: number | null) {
-  if (!minutes) return null;
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  return rem ? `${hours}h${rem}` : `${hours}h`;
-}
 
 export default async function RecipesPage({ searchParams }: RecipesPageProps) {
   const { familyId } = await requireActiveFamily();
@@ -72,74 +64,17 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
           }
         />
       ) : (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base">
-                Toutes les recettes
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({recipes.length})
-                </span>
-              </CardTitle>
-              <Link
-                href="/recipes/new"
-                className={buttonVariants({
-                  size: "sm",
-                  className: "hidden md:inline-flex",
-                })}
-              >
-                <Plus className="size-3.5" />
-                Ajouter
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <ul className="divide-y">
-              {recipes.map((recipe) => {
-                const total =
-                  recipe.prep_time_minutes || recipe.cook_time_minutes
-                    ? formatMinutes(
-                        (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0),
-                      )
-                    : null;
-
-                return (
-                  <li key={recipe.id}>
-                    <Link
-                      href={`/recipes/${recipe.id}`}
-                      className="group flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium group-hover:text-primary">
-                          {recipe.title}
-                        </p>
-                        {recipe.description?.trim() ? (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                            {recipe.description}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {recipe.servings ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Users className="size-3" />
-                            {recipe.servings}
-                          </span>
-                        ) : null}
-                        {total ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="size-3" />
-                            {total}
-                          </span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </CardContent>
-        </Card>
+        <RecipesListView
+          recipes={recipes.map((r) => ({
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            prep_time_minutes: r.prep_time_minutes,
+            cook_time_minutes: r.cook_time_minutes,
+            servings: r.servings,
+            image_url: r.image_url,
+          }))}
+        />
       )}
 
       <Link

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getPreferredLocationId } from "@/lib/location-preferences";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
+import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,6 +143,7 @@ export default async function RecipeDetailPage({
               <Pencil className="size-3.5" />
               Modifier
             </Link>
+            <DeleteRecipeButton recipeId={recipe.id} recipeTitle={recipe.title} />
           </>
         }
       >
