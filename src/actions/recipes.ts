@@ -11,6 +11,8 @@ type ActionResult =
   | { success: true; recipeId?: string }
   | { success: false; error: string };
 
+export type RecipePersistencePayload = z.infer<typeof recipePayloadSchema>;
+
 const ingredientSchema = z.object({
   name: z.string().trim().min(1, "Chaque ingrédient doit avoir un nom"),
   quantity: z.string().trim().optional().default(""),
@@ -166,49 +168,13 @@ export async function createRecipe(formData: FormData): Promise<ActionResult> {
     return payload;
   }
 
-  const recipe = await prisma.$transaction(async (tx) => {
-    const createdRecipe = await tx.recipes.create({
-      data: {
-        family_id: familyId,
-        created_by_profile_id: profileId,
-        title: payload.data.title,
-        description: payload.data.description,
-        prep_time_minutes: payload.data.prepTimeMinutes,
-        cook_time_minutes: payload.data.cookTimeMinutes,
-        servings: payload.data.servings,
-        source_url: payload.data.sourceUrl,
-        image_url: payload.data.imageUrl,
-      },
-    });
-
-    await tx.recipe_ingredients.createMany({
-      data: payload.data.ingredients.map((ingredient, index) => {
-        const quantity = parseIngredientQuantity(ingredient.quantity ?? "");
-
-        return {
-          recipe_id: createdRecipe.id,
-          position: index,
-          name: ingredient.name,
-          unit: ingredient.unit || null,
-          note: ingredient.note || null,
-          quantity_numeric: quantity.quantity_numeric,
-          raw_quantity_text: quantity.raw_quantity_text,
-        };
-      }),
-    });
-
-    await tx.recipe_steps.createMany({
-      data: payload.data.steps.map((step, index) => ({
-        recipe_id: createdRecipe.id,
-        position: index,
-        instruction: step.instruction,
-      })),
-    });
-
-    return createdRecipe;
+  const recipe = await createRecipeRecord({
+    familyId,
+    profileId,
+    data: payload.data,
   });
 
-  revalidatePath("/recipes");
+  await revalidateRecipeSurfaces(recipe.id);
   redirect(`/recipes/${recipe.id}`);
 }
 
@@ -340,4 +306,58 @@ export async function updateRecipe(formData: FormData): Promise<ActionResult> {
   revalidatePath("/recipes");
   revalidatePath(`/recipes/${recipeId}`);
   redirect(`/recipes/${recipeId}`);
+}
+
+export async function createRecipeRecord(input: {
+  familyId: string;
+  profileId: string;
+  data: RecipePersistencePayload;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const createdRecipe = await tx.recipes.create({
+      data: {
+        family_id: input.familyId,
+        created_by_profile_id: input.profileId,
+        title: input.data.title,
+        description: input.data.description,
+        prep_time_minutes: input.data.prepTimeMinutes,
+        cook_time_minutes: input.data.cookTimeMinutes,
+        servings: input.data.servings,
+        source_url: input.data.sourceUrl,
+        image_url: input.data.imageUrl,
+      },
+    });
+
+    await tx.recipe_ingredients.createMany({
+      data: input.data.ingredients.map((ingredient, index) => {
+        const quantity = parseIngredientQuantity(ingredient.quantity ?? "");
+
+        return {
+          recipe_id: createdRecipe.id,
+          position: index,
+          name: ingredient.name,
+          unit: ingredient.unit || null,
+          note: ingredient.note || null,
+          quantity_numeric: quantity.quantity_numeric,
+          raw_quantity_text: quantity.raw_quantity_text,
+        };
+      }),
+    });
+
+    await tx.recipe_steps.createMany({
+      data: input.data.steps.map((step, index) => ({
+        recipe_id: createdRecipe.id,
+        position: index,
+        instruction: step.instruction,
+      })),
+    });
+
+    return createdRecipe;
+  });
+}
+
+export async function revalidateRecipeSurfaces(recipeId: string) {
+  revalidatePath("/recipes");
+  revalidatePath("/dashboard");
+  revalidatePath(`/recipes/${recipeId}`);
 }

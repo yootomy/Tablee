@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { RecipesSearchInput } from "@/components/forms/recipes-search-input";
+import { RecipeImportSpotlight } from "@/components/recipes/recipe-import-spotlight";
 import { RecipesListView } from "@/components/recipes/recipes-list-view";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -47,6 +48,8 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
       >
         <RecipesSearchInput initialValue={trimmedQuery} />
       </AppPageHeader>
+
+      <RecipeImportSpotlight />
 
       {/* Contenu */}
       {recipes.length === 0 ? (

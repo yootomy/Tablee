@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { importRecipeFromUrl } from "@/actions/recipe-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ImportedRecipeDraft } from "@/types/recipe-import";
-import { Link2, Sparkles, X } from "lucide-react";
+import { Link2, Sparkles, ClipboardPaste, X } from "lucide-react";
 
 interface ImportRecipeDialogProps {
-  onImported: (draft: ImportedRecipeDraft) => void;
+  buttonClassName?: string;
+  buttonLabel?: string;
+  buttonVariant?: "default" | "outline" | "secondary";
 }
 
-export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
+export function ImportRecipeDialog({
+  buttonClassName,
+  buttonLabel = "Importer un lien",
+  buttonVariant = "outline",
+}: ImportRecipeDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,7 +45,24 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
     if (value < 20) return "Récupération du lien social...";
     if (value < 45) return "Téléchargement de la vidéo...";
     if (value < 75) return "Analyse de la vidéo et de l'audio...";
-    return "Préparation du brouillon de recette...";
+    if (value < 95) return "Création de la recette...";
+    return "Ajout à ta collection...";
+  }
+
+  async function handlePaste() {
+    try {
+      const text = await navigator.clipboard.readText();
+
+      if (!text.trim()) {
+        setError("Le presse-papiers est vide pour le moment.");
+        return;
+      }
+
+      setUrl(text.trim());
+      setError(null);
+    } catch {
+      setError("Impossible de lire le presse-papiers sur cet appareil.");
+    }
   }
 
   async function handleSubmit() {
@@ -65,23 +89,24 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
 
     setProgress(100);
     await new Promise((resolve) => window.setTimeout(resolve, 220));
-    onImported(result.draft);
     setLoading(false);
     setProgress(0);
     setOpen(false);
     setUrl("");
+    router.push(`/recipes/${result.recipeId}`);
+    router.refresh();
   }
 
   return (
     <>
       <Button
         type="button"
-        variant="outline"
-        className="border-white/20 bg-white/95 text-foreground hover:bg-white"
+        variant={buttonVariant}
+        className={buttonClassName}
         onClick={() => setOpen(true)}
       >
         <Sparkles className="size-3.5" />
-        Importer un lien
+        {buttonLabel}
       </Button>
 
       {open ? (
@@ -104,7 +129,7 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
                 <p className="text-sm text-muted-foreground">
                   Colle un lien TikTok ou Instagram. Tablee analysera la
                   description, les métadonnées et la vidéo elle-même pour
-                  préremplir la fiche.
+                  ajouter directement la recette à ta collection.
                 </p>
               </div>
 
@@ -120,7 +145,19 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="recipe-import-url">Lien social</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="recipe-import-url">Lien social</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={handlePaste}
+                    disabled={loading}
+                  >
+                    <ClipboardPaste className="size-3.5" />
+                    Coller
+                  </Button>
+                </div>
                 <div className="relative">
                   <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -172,7 +209,7 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Progression estimée pendant que Tablee récupère le média et
-                    prépare le brouillon.
+                    crée la recette automatiquement.
                   </p>
                 </div>
               ) : null}
@@ -187,7 +224,7 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
                   Annuler
                 </Button>
                 <Button type="button" onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Analyse en cours..." : "Analyser le lien"}
+                  {loading ? "Import en cours..." : "Importer la recette"}
                 </Button>
               </div>
             </div>

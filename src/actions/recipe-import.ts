@@ -2,16 +2,20 @@
 
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { importRecipeFromSocialUrl } from "@/lib/recipe-import";
-import type { ImportedRecipeDraft } from "@/types/recipe-import";
+import {
+  createRecipeRecord,
+  revalidateRecipeSurfaces,
+  type RecipePersistencePayload,
+} from "@/actions/recipes";
 
 type ImportRecipeResult =
-  | { success: true; draft: ImportedRecipeDraft }
+  | { success: true; recipeId: string }
   | { success: false; error: string };
 
 export async function importRecipeFromUrl(
   formData: FormData,
 ): Promise<ImportRecipeResult> {
-  await requireActiveFamily();
+  const { familyId, profileId } = await requireActiveFamily();
 
   const url = formData.get("url");
 
@@ -21,12 +25,33 @@ export async function importRecipeFromUrl(
 
   try {
     const draft = await importRecipeFromSocialUrl(url.trim());
-    return { success: true, draft };
+    const recipe = await createRecipeRecord({
+      familyId,
+      profileId,
+      data: draftToPayload(draft),
+    });
+
+    await revalidateRecipeSurfaces(recipe.id);
+    return { success: true, recipeId: recipe.id };
   } catch (error) {
     const message = formatImportErrorMessage(error);
 
     return { success: false, error: message };
   }
+}
+
+function draftToPayload(draft: Awaited<ReturnType<typeof importRecipeFromSocialUrl>>): RecipePersistencePayload {
+  return {
+    title: draft.title,
+    description: draft.description || undefined,
+    prepTimeMinutes: draft.prepTimeMinutes ? Number(draft.prepTimeMinutes) : undefined,
+    cookTimeMinutes: draft.cookTimeMinutes ? Number(draft.cookTimeMinutes) : undefined,
+    servings: draft.servings ? Number(draft.servings) : undefined,
+    sourceUrl: draft.sourceUrl || undefined,
+    imageUrl: draft.imageUrl || undefined,
+    ingredients: draft.ingredients,
+    steps: draft.steps,
+  };
 }
 
 function formatImportErrorMessage(error: unknown) {
