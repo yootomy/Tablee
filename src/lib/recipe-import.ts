@@ -1,10 +1,16 @@
-import { createReadStream } from "node:fs";
-import { promises as fs } from "node:fs";
+import { createReadStream, promises as fs } from "node:fs";
 import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import crypto from "node:crypto";
+import {
+  createPartFromUri,
+  createUserContent,
+  type File as GeminiFile,
+  FileState,
+  GoogleGenAI,
+} from "@google/genai";
 import OpenAI from "openai";
 import { z } from "zod";
 import type { ImportedRecipeDraft } from "@/types/recipe-import";
@@ -14,6 +20,11 @@ const BASE_PATH = "/tablee";
 const PUBLIC_IMPORTS_DIR = path.join(process.cwd(), "public", "imported", "recipes");
 const YT_DLP_BIN = process.env.YT_DLP_BIN;
 const FFMPEG_BIN = process.env.FFMPEG_BIN;
+const AI_RECIPE_IMPORT_PROVIDER = process.env.AI_RECIPE_IMPORT_PROVIDER;
+const GEMINI_RECIPE_IMPORT_MODEL =
+  process.env.GEMINI_RECIPE_IMPORT_MODEL || "gemini-2.5-flash";
+const GEMINI_FILE_POLL_INTERVAL_MS = 4000;
+const GEMINI_FILE_POLL_MAX_ATTEMPTS = 45;
 const OPENAI_RECIPE_IMPORT_MODEL =
   process.env.OPENAI_RECIPE_IMPORT_MODEL || "gpt-4.1-mini";
 const OPENAI_RECIPE_TRANSCRIBE_MODEL =
@@ -49,6 +60,7 @@ const recipeImportResponseSchema = z.object({
 });
 
 type SocialPlatform = "tiktok" | "instagram";
+type ImportProvider = "gemini" | "openai";
 
 type SocialVideoMetadata = {
   platform: SocialPlatform;
@@ -60,6 +72,116 @@ type SocialVideoMetadata = {
   durationSeconds: number | null;
   tags: string[];
 };
+
+const geminiRecipeJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: {
+      type: "string",
+      description: "Titre court et naturel de la recette.",
+    },
+    description: {
+      type: "string",
+      description:
+        "Description propre et concise de la recette, adaptée à une app familiale.",
+    },
+    prepTimeMinutes: {
+      type: ["integer", "null"],
+      minimum: 0,
+      maximum: 1440,
+      description:
+        "Temps de préparation en minutes. null si vraiment impossible à estimer.",
+    },
+    cookTimeMinutes: {
+      type: ["integer", "null"],
+      minimum: 0,
+      maximum: 1440,
+      description:
+        "Temps de cuisson en minutes. null si vraiment impossible à estimer.",
+    },
+    servings: {
+      type: ["integer", "null"],
+      minimum: 1,
+      maximum: 100,
+      description:
+        "Nombre de portions raisonnablement estimé. null si impossible à déduire.",
+    },
+    ingredients: {
+      type: "array",
+      minItems: 1,
+      description: "Liste des ingrédients avec quantités si disponibles.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: {
+            type: "string",
+            description: "Nom de l'ingrédient.",
+          },
+          quantity: {
+            type: "string",
+            description:
+              "Quantité textuelle de l'ingrédient, vide si absente ou très incertaine.",
+          },
+          unit: {
+            type: "string",
+            description:
+              "Unité courte de l'ingrédient, vide si absente ou intégrée dans quantity.",
+          },
+          note: {
+            type: "string",
+            description:
+              "Précision libre sur l'ingrédient si utile, sinon chaîne vide.",
+          },
+        },
+        required: ["name", "quantity", "unit", "note"],
+      },
+    },
+    steps: {
+      type: "array",
+      minItems: 1,
+      description: "Étapes de préparation dans l'ordre.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          instruction: {
+            type: "string",
+            description: "Consigne claire de préparation.",
+          },
+        },
+        required: ["instruction"],
+      },
+    },
+    warnings: {
+      type: "array",
+      description:
+        "Liste des informations floues, supposées ou absentes à signaler à l'utilisateur.",
+      items: {
+        type: "string",
+      },
+    },
+    confidence: {
+      type: ["number", "null"],
+      minimum: 0,
+      maximum: 1,
+      description:
+        "Niveau de confiance global entre 0 et 1. null si le modèle ne peut pas l'estimer.",
+    },
+  },
+  required: [
+    "title",
+    "description",
+    "prepTimeMinutes",
+    "cookTimeMinutes",
+    "servings",
+    "ingredients",
+    "steps",
+    "warnings",
+    "confidence",
+  ],
+} as const;
 
 function isSupportedSocialUrl(value: string) {
   try {
@@ -77,6 +199,29 @@ function detectPlatform(value: string): SocialPlatform {
   return hostname.includes("instagram") ? "instagram" : "tiktok";
 }
 
+function getImportProvider(): ImportProvider {
+  const configured = AI_RECIPE_IMPORT_PROVIDER?.trim().toLowerCase();
+
+  if (configured === "gemini" || configured === "openai") {
+    return configured;
+  }
+
+  if (process.env.GEMINI_API_KEY?.trim()) {
+    return "gemini";
+  }
+
+  return "openai";
+}
+
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY n'est pas configurée sur le serveur.");
+  }
+
+  return new GoogleGenAI({ apiKey });
+}
+
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -84,6 +229,16 @@ function getOpenAIClient() {
   }
 
   return new OpenAI({ apiKey });
+}
+
+function getVideoMimeType(videoPath: string) {
+  const extension = path.extname(videoPath).toLowerCase();
+
+  if (extension === ".webm") return "video/webm";
+  if (extension === ".mov") return "video/quicktime";
+  if (extension === ".mkv") return "video/x-matroska";
+
+  return "video/mp4";
 }
 
 function dataUrlForImage(buffer: Buffer, extension: string) {
@@ -417,7 +572,90 @@ function extractJsonObject(text: string) {
   throw new Error("La réponse IA n'a pas pu être interprétée en JSON.");
 }
 
-async function analyzeRecipeFromMedia(input: {
+async function waitForGeminiFileActive(
+  ai: GoogleGenAI,
+  file: GeminiFile,
+) {
+  let currentFile = file;
+
+  for (let attempt = 0; attempt < GEMINI_FILE_POLL_MAX_ATTEMPTS; attempt += 1) {
+    if (currentFile.state === FileState.ACTIVE) {
+      return currentFile;
+    }
+
+    if (currentFile.state === FileState.FAILED) {
+      throw new Error(
+        currentFile.error?.message ||
+          "Gemini n'a pas réussi à préparer la vidéo pour l'analyse.",
+      );
+    }
+
+    if (!currentFile.name) {
+      break;
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, GEMINI_FILE_POLL_INTERVAL_MS),
+    );
+    currentFile = await ai.files.get({ name: currentFile.name });
+  }
+
+  throw new Error(
+    "Gemini met trop de temps à préparer la vidéo. Réessaie avec un autre lien ou une vidéo plus courte.",
+  );
+}
+
+async function analyzeRecipeFromVideoWithGemini(input: {
+  metadata: SocialVideoMetadata;
+  videoPath: string;
+}) {
+  const ai = getGeminiClient();
+  const mimeType = getVideoMimeType(input.videoPath);
+  let uploadedFile = await ai.files.upload({
+    file: input.videoPath,
+    config: { mimeType },
+  });
+
+  try {
+    uploadedFile = await waitForGeminiFileActive(ai, uploadedFile);
+
+    if (!uploadedFile.uri) {
+      throw new Error("Gemini a bien reçu la vidéo, mais n'a pas renvoyé d'URI exploitable.");
+    }
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_RECIPE_IMPORT_MODEL,
+      contents: createUserContent([
+        createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
+        [
+          "Tu analyses une vidéo de recette publiée sur un réseau social.",
+          "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
+          "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
+          "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
+          "Ne renvoie que le JSON demandé par le schéma.",
+          "",
+          `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
+        ].join("\n"),
+      ]),
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: geminiRecipeJsonSchema,
+      },
+    });
+
+    return recipeImportResponseSchema.parse(JSON.parse(response.text || "{}"));
+  } finally {
+    if (uploadedFile.name) {
+      try {
+        await ai.files.delete({ name: uploadedFile.name });
+      } catch {
+        // Best effort cleanup only.
+      }
+    }
+  }
+}
+
+async function analyzeRecipeFromMediaWithOpenAI(input: {
   metadata: SocialVideoMetadata;
   transcript: string;
   frames: Array<{ dataUrl: string }>;
@@ -520,19 +758,28 @@ export async function importRecipeFromSocialUrl(url: string) {
   const tempDir = await fs.mkdtemp(path.join(tmpdir(), "tablee-import-"));
 
   try {
+    const provider = getImportProvider();
     const metadata = await getSocialMetadata(url, tempDir);
     const videoPath = await downloadSourceVideo(url, tempDir);
-    const [frames, audioPath] = await Promise.all([
-      extractFrames(videoPath, tempDir),
-      extractAudio(videoPath, tempDir),
-    ]);
+    const analysis =
+      provider === "gemini"
+        ? await analyzeRecipeFromVideoWithGemini({
+            metadata,
+            videoPath,
+          })
+        : await (async () => {
+            const [frames, audioPath] = await Promise.all([
+              extractFrames(videoPath, tempDir),
+              extractAudio(videoPath, tempDir),
+            ]);
+            const transcript = await transcribeAudio(audioPath);
 
-    const transcript = await transcribeAudio(audioPath);
-    const analysis = await analyzeRecipeFromMedia({
-      metadata,
-      transcript,
-      frames,
-    });
+            return analyzeRecipeFromMediaWithOpenAI({
+              metadata,
+              transcript,
+              frames,
+            });
+          })();
 
     let imageUrl = "";
 
@@ -544,9 +791,16 @@ export async function importRecipeFromSocialUrl(url: string) {
       }
     }
 
-    if (!imageUrl && frames[0]?.filePath) {
-      const firstFrameBuffer = await fs.readFile(frames[0].filePath);
-      imageUrl = await storeImageBuffer(firstFrameBuffer, ".jpg");
+    if (!imageUrl) {
+      try {
+        const frames = await extractFrames(videoPath, tempDir);
+        if (frames[0]?.filePath) {
+          const firstFrameBuffer = await fs.readFile(frames[0].filePath);
+          imageUrl = await storeImageBuffer(firstFrameBuffer, ".jpg");
+        }
+      } catch {
+        imageUrl = "";
+      }
     }
 
     return normalizeImportedRecipe({

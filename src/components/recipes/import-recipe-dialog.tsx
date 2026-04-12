@@ -75,7 +75,7 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Colle un lien TikTok ou Instagram. Tablee analysera la
-                  description, les métadonnées, l&apos;audio et les frames pour
+                  description, les métadonnées et la vidéo elle-même pour
                   préremplir la fiche.
                 </p>
               </div>
@@ -109,6 +109,10 @@ export function ImportRecipeDialog({ onImported }: ImportRecipeDialogProps) {
               <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
                 L&apos;analyse peut prendre quelques secondes et demandera au
                 serveur d&apos;avoir{" "}
+                <span className="font-semibold text-foreground">
+                  GEMINI_API_KEY
+                </span>
+                {" "}ou{" "}
                 <span className="font-semibold text-foreground">
                   OPENAI_API_KEY
                 </span>

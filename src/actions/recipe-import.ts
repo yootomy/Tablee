@@ -39,13 +39,18 @@ function formatImportErrorMessage(error: unknown) {
   if (
     message.includes("quota") ||
     message.includes("billing") ||
-    message.includes("429")
+    message.includes("429") ||
+    message.includes("RESOURCE_EXHAUSTED")
   ) {
-    return "L'import IA est bien branché, mais le quota OpenAI du projet est actuellement dépassé. Vérifie la facturation ou recharge le compte OpenAI.";
+    return "L'import IA est bien branché, mais le quota du fournisseur IA configuré est actuellement dépassé. Vérifie la facturation ou le free tier associé à la clé utilisée.";
   }
 
-  if (message.includes("OPENAI_API_KEY")) {
-    return "La clé OpenAI n'est pas configurée correctement sur le serveur.";
+  if (
+    message.includes("OPENAI_API_KEY") ||
+    message.includes("GEMINI_API_KEY") ||
+    message.includes("API key not valid")
+  ) {
+    return "La clé du fournisseur IA n'est pas configurée correctement sur le serveur.";
   }
 
   return message;

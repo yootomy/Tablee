@@ -47,6 +47,12 @@
 - When a page or action needs a default location, it should use the preferred location if available.
 - Shared helper for that logic:
   - `src/lib/location-preferences.ts`
+- AI recipe import lives in `src/lib/recipe-import.ts`.
+- If both keys exist, the social import should prefer Gemini automatically.
+- Relevant env vars:
+  - `GEMINI_API_KEY`
+  - `OPENAI_API_KEY`
+  - optional `AI_RECIPE_IMPORT_PROVIDER=gemini|openai`
 
 ## Important files
 
