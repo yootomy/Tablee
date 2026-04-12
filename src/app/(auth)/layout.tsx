@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { AppBrand } from "@/components/layout/app-brand";
 
 export default function AuthLayout({
   children,
@@ -11,16 +11,7 @@ export default function AuthLayout({
         <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
           <section className="space-y-5">
             <div className="inline-flex items-center gap-3 rounded-full border border-primary/10 bg-background/75 px-4 py-2 shadow-sm backdrop-blur-sm">
-              <Image
-                src="/tablee/logo-tablee-nobg.png"
-                alt=""
-                width={36}
-                height={36}
-                className="size-9"
-              />
-              <span className="text-xl font-extrabold tracking-tight text-primary">
-                Tablee
-              </span>
+              <AppBrand compact />
             </div>
 
             <div className="space-y-3">

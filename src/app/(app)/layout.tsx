@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AppBrand } from "@/components/layout/app-brand";
 import { FamilySwitcher } from "@/components/layout/family-switcher";
 import { NavLinks, BottomNav } from "@/components/layout/nav-links";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -58,9 +58,8 @@ export default async function AppLayout({
     <div className="flex min-h-svh flex-col md:min-h-screen md:flex-row">
       {/* Sidebar desktop */}
       <aside className="hidden w-64 shrink-0 border-r border-border bg-accent/30 md:flex md:flex-col">
-        <div className="flex items-center gap-2.5 p-5">
-          <Image src="/tablee/logo-tablee-nobg.png" alt="" width={36} height={36} className="size-9" />
-          <h1 className="text-2xl font-extrabold tracking-tight text-primary">Tablee</h1>
+        <div className="p-5">
+          <AppBrand />
         </div>
         <div className="px-4">
           <FamilySwitcher families={families} activeFamilyId={activeFamilyId} />
@@ -73,19 +72,18 @@ export default async function AppLayout({
       </aside>
 
       {/* Mobile header */}
-      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-border bg-accent/30 px-4 py-2.5 backdrop-blur-sm [padding-left:max(env(safe-area-inset-left),1rem)] [padding-right:max(env(safe-area-inset-right),1rem)] md:hidden">
-        <div className="flex shrink-0 items-center gap-2">
-          <Image src="/tablee/logo-tablee-nobg.png" alt="" width={28} height={28} className="size-7" />
-          <h1 className="text-lg font-extrabold tracking-tight text-primary">Tablee</h1>
-        </div>
-        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur-md md:hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 [padding-left:max(env(safe-area-inset-left),1rem)] [padding-right:max(env(safe-area-inset-right),1rem)]">
+          <AppBrand compact className="min-w-0 flex-1" />
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-background/85 p-1 shadow-sm">
           <FamilySwitcher
             families={families}
             activeFamilyId={activeFamilyId}
             fullWidth={false}
-            triggerClassName="h-8 px-3 text-xs"
+            triggerClassName="h-8 max-w-[8.5rem] rounded-full border-transparent bg-transparent px-2.5 text-xs font-semibold shadow-none hover:bg-accent/70"
           />
           <UserMenu name={session.user.name ?? "Utilisateur"} compact />
+          </div>
         </div>
       </header>
 
