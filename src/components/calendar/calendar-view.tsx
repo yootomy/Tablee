@@ -199,6 +199,7 @@ export function CalendarView({
   const currentLocationLabel = selectedLocationId
     ? locationNameById[selectedLocationId]
     : "Tous les lieux";
+  const selectedDayCreateHref = `/calendar/new?date=${formatDateKey(selectedDay)}&slot=lunch&locationId=${encodeURIComponent(defaultLocationId)}`;
 
   function renderListMealCard(meal: MealData) {
     const status = getStatusBadge(meal.status);
@@ -715,33 +716,49 @@ export function CalendarView({
               </div>
             </div>
 
-            {isSameMonth(selectedDay, currentDate) && selectedDayMeals.length > 0 ? (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold capitalize">
-                      {selectedDay.toLocaleDateString("fr-FR", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Les repas planifiés pour ce jour sélectionné.
-                    </p>
-                  </div>
+          {isSameMonth(selectedDay, currentDate) && selectedDayMeals.length > 0 ? (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold capitalize">
+                    {selectedDay.toLocaleDateString("fr-FR", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Les repas planifiés pour ce jour sélectionné.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
                   <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-foreground">
                     {selectedDayMeals.length}
                   </span>
+                  <Link
+                    href={selectedDayCreateHref}
+                    className={buttonVariants({ size: "sm", variant: "outline" })}
+                  >
+                    +
+                  </Link>
                 </div>
+              </div>
 
-                <div className="space-y-3">
-                  {selectedDayMeals.map((meal) => renderListMealCard(meal))}
-                </div>
-              </section>
-            ) : null}
-          </>
-        )}
+              <div className="space-y-3">
+                {selectedDayMeals.map((meal) => renderListMealCard(meal))}
+              </div>
+            </section>
+          ) : null}
+
+          <Link
+            href={selectedDayCreateHref}
+            aria-label={`Ajouter un repas le ${selectedDay.toLocaleDateString("fr-FR")}`}
+            className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex size-14 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground shadow-lg transition-transform hover:scale-105 md:bottom-6"
+          >
+            +
+          </Link>
+        </>
+      )}
 
       {view === "list" && (
         <div className="space-y-6">
