@@ -23,11 +23,30 @@ export async function importRecipeFromUrl(
     const draft = await importRecipeFromSocialUrl(url.trim());
     return { success: true, draft };
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "L'import IA n'a pas pu aboutir pour ce lien.";
+    const message = formatImportErrorMessage(error);
 
     return { success: false, error: message };
   }
+}
+
+function formatImportErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "L'import IA n'a pas pu aboutir pour ce lien.";
+  }
+
+  const message = error.message;
+
+  if (
+    message.includes("quota") ||
+    message.includes("billing") ||
+    message.includes("429")
+  ) {
+    return "L'import IA est bien branché, mais le quota OpenAI du projet est actuellement dépassé. Vérifie la facturation ou recharge le compte OpenAI.";
+  }
+
+  if (message.includes("OPENAI_API_KEY")) {
+    return "La clé OpenAI n'est pas configurée correctement sur le serveur.";
+  }
+
+  return message;
 }
