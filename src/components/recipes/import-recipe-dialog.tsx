@@ -165,20 +165,6 @@ export function ImportRecipeDialog({
                 />
               </div>
 
-              <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-                L&apos;analyse peut prendre quelques secondes et demandera au
-                serveur d&apos;avoir{" "}
-                <span className="font-semibold text-foreground">
-                  GEMINI_API_KEY
-                </span>
-                {" "}ou{" "}
-                <span className="font-semibold text-foreground">
-                  OPENAI_API_KEY
-                </span>
-                , <span className="font-semibold text-foreground">yt-dlp</span>{" "}
-                et <span className="font-semibold text-foreground">ffmpeg</span>.
-              </div>
-
               {error ? (
                 <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {error}
