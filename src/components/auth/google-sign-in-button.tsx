@@ -15,7 +15,7 @@ export function GoogleSignInButton({ label }: { label?: string }) {
       disabled={loading}
       onClick={() => {
         setLoading(true);
-        signIn("google", { callbackUrl: "/dashboard" });
+        signIn("google", { callbackUrl: "/tablee/dashboard" });
       }}
     >
       <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
