@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getPreferredLocationId } from "@/lib/location-preferences";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
@@ -77,6 +78,7 @@ export default async function RecipeDetailPage({
 
   const totalMinutes =
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+  const recipeImageUrl = resolveMediaUrl(recipe.image_url);
   const preferredLocationId = getPreferredLocationId(
     locations,
     familyContextPreferences?.last_selected_location_id,
@@ -162,13 +164,13 @@ export default async function RecipeDetailPage({
             ) : null}
           </div>
 
-          {recipe.image_url ? (
+          {recipeImageUrl ? (
             <div className="w-full sm:w-44">
               <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-lg backdrop-blur-sm">
                 <div className="aspect-[16/10] w-full overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={recipe.image_url}
+                    src={recipeImageUrl}
                     alt={recipe.title}
                     className="size-full object-cover"
                   />

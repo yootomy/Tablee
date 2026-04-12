@@ -509,6 +509,43 @@ async function extractFrames(videoPath: string, cwd: string) {
   );
 }
 
+function getPosterSeekSeconds(durationSeconds: number | null) {
+  if (!durationSeconds || durationSeconds <= 2) {
+    return "0.5";
+  }
+
+  return String(Math.min(2, Math.max(0.5, durationSeconds * 0.15)));
+}
+
+async function extractPosterImage(videoPath: string, cwd: string, durationSeconds: number | null) {
+  const posterPath = path.join(cwd, "poster.jpg");
+  const ffmpegBin = await resolveBinaryPath("ffmpeg");
+
+  try {
+    await runCommand(
+      ffmpegBin,
+      [
+        "-y",
+        "-ss",
+        getPosterSeekSeconds(durationSeconds),
+        "-i",
+        videoPath,
+        "-frames:v",
+        "1",
+        "-vf",
+        "scale=1280:-1:force_original_aspect_ratio=decrease",
+        posterPath,
+      ],
+      cwd,
+    );
+  } catch (error) {
+    throw new Error(formatCommandError(error, "ffmpeg"));
+  }
+
+  const posterBuffer = await fs.readFile(posterPath);
+  return storeImageBuffer(posterBuffer, ".jpg");
+}
+
 async function extractAudio(videoPath: string, cwd: string) {
   const audioPath = path.join(cwd, "audio.wav");
   const ffmpegBin = await resolveBinaryPath("ffmpeg");
@@ -783,7 +820,17 @@ export async function importRecipeFromSocialUrl(url: string) {
 
     let imageUrl = "";
 
-    if (metadata.thumbnailUrl) {
+    try {
+      imageUrl = await extractPosterImage(
+        videoPath,
+        tempDir,
+        metadata.durationSeconds,
+      );
+    } catch {
+      imageUrl = "";
+    }
+
+    if (!imageUrl && metadata.thumbnailUrl) {
       try {
         imageUrl = await downloadAndStoreImage(metadata.thumbnailUrl);
       } catch {

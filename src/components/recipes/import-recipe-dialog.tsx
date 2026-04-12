@@ -6,7 +6,7 @@ import { importRecipeFromUrl } from "@/actions/recipe-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link2, Sparkles, ClipboardPaste, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface ImportRecipeDialogProps {
   buttonClassName?: string;
@@ -105,7 +105,6 @@ export function ImportRecipeDialog({
         className={buttonClassName}
         onClick={() => setOpen(true)}
       >
-        <Sparkles className="size-3.5" />
         {buttonLabel}
       </Button>
 
@@ -124,7 +123,7 @@ export function ImportRecipeDialog({
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <h3 id="import-recipe-dialog-title" className="text-lg font-bold">
-                  Importer une recette avec l&apos;IA
+                  Importer depuis un lien
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Colle un lien TikTok ou Instagram. Tablee analysera la
@@ -154,21 +153,16 @@ export function ImportRecipeDialog({
                     onClick={handlePaste}
                     disabled={loading}
                   >
-                    <ClipboardPaste className="size-3.5" />
                     Coller
                   </Button>
                 </div>
-                <div className="relative">
-                  <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="recipe-import-url"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    placeholder="https://www.tiktok.com/... ou https://www.instagram.com/..."
-                    className="pl-10"
-                    autoFocus
-                  />
-                </div>
+                <Input
+                  id="recipe-import-url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://www.tiktok.com/... ou https://www.instagram.com/..."
+                  autoFocus
+                />
               </div>
 
               <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">

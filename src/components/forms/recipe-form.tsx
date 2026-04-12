@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormSection } from "@/components/shared/form-section";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 import { ImagePlus, Plus, Trash2, X } from "lucide-react";
 import type { RecipeFormDraft } from "@/types/recipe-import";
@@ -227,6 +228,7 @@ export function RecipeForm({
   const [showMore, setShowMore] = useState(
     mode === "edit" || !!initialValues.description || !!initialValues.sourceUrl,
   );
+  const previewImageUrl = resolveMediaUrl(imageUrl);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -310,12 +312,12 @@ export function RecipeForm({
           title="Informations"
           description="Les infos clés pour reconnaître la recette d&apos;un coup d&apos;œil."
         >
-            {imageUrl ? (
+            {previewImageUrl ? (
               <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="relative aspect-[16/8] w-full overflow-hidden bg-muted/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={imageUrl}
+                    src={previewImageUrl}
                     alt={title || "Image importée de la recette"}
                     className="size-full object-cover"
                   />

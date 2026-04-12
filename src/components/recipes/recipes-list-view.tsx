@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Clock, Users, Plus, LayoutGrid, List, ChefHat } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { cn } from "@/lib/utils";
 
 type RecipeItem = {
@@ -113,6 +114,7 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
   return (
     <div className="space-y-3">
       {recipes.map((recipe) => {
+        const imageUrl = resolveMediaUrl(recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
             ? formatMinutes(
@@ -127,11 +129,11 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
             href={`/recipes/${recipe.id}`}
             className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
           >
-            <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
-              {recipe.image_url ? (
+            <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10 sm:h-16 sm:w-24">
+              {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={recipe.image_url}
+                  src={imageUrl}
                   alt={recipe.title}
                   className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
@@ -176,6 +178,7 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {recipes.map((recipe) => {
+        const imageUrl = resolveMediaUrl(recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
             ? formatMinutes(
@@ -191,10 +194,10 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
             className="group relative flex aspect-square flex-col justify-end overflow-hidden rounded-2xl border border-border transition-all hover:border-primary/40 hover:shadow-lg"
           >
             {/* Image or placeholder */}
-            {recipe.image_url ? (
+            {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={recipe.image_url}
+                src={imageUrl}
                 alt={recipe.title}
                 className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
               />

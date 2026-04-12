@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { resolveMediaUrl } from "@/lib/media-url";
 import {
   CalendarDays,
   ChefHat,
@@ -220,37 +221,41 @@ export default async function DashboardPage() {
                 />
               ) : (
                 <div className="space-y-3">
-                  {recentRecipes.map((recipe) => (
-                    <Link
-                      key={recipe.id}
-                      href={`/recipes/${recipe.id}`}
-                      className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
-                    >
-                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
-                        {recipe.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={recipe.image_url}
-                            alt={recipe.title}
-                            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <ChefHat className="size-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
-                          {recipe.title}
-                        </p>
-                        {recipe.servings ? (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                            <Users className="size-3" />
-                            {recipe.servings} p.
-                          </span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  ))}
+                  {recentRecipes.map((recipe) => {
+                    const imageUrl = resolveMediaUrl(recipe.image_url);
+
+                    return (
+                      <Link
+                        key={recipe.id}
+                        href={`/recipes/${recipe.id}`}
+                        className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                      >
+                        <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-primary/10">
+                          {imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={imageUrl}
+                              alt={recipe.title}
+                              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <ChefHat className="size-5 text-primary" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
+                            {recipe.title}
+                          </p>
+                          {recipe.servings ? (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                              <Users className="size-3" />
+                              {recipe.servings} p.
+                            </span>
+                          ) : null}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
