@@ -16,6 +16,14 @@ type ShoppingPageProps = {
   searchParams: Promise<{ locationId?: string | string[] }>;
 };
 
+function getSevenDaysAgo() {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+}
+
+function getDaysRemaining(completedAt: Date) {
+  return Math.max(0, 7 - Math.floor((Date.now() - completedAt.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
 function formatShoppingQuantity(item: {
   quantity_numeric: { toString(): string } | null;
   raw_quantity_text: string | null;
@@ -82,8 +90,26 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
     locations.find((location) => location.id === preferredLocationId) ??
     locations[0];
 
+  const sevenDaysAgo = getSevenDaysAgo();
+
+  // Nettoyage silencieux des articles achetés depuis plus de 7 jours
+  await prisma.shopping_items.deleteMany({
+    where: {
+      family_id: familyId,
+      is_completed: true,
+      completed_at: { lt: sevenDaysAgo },
+    },
+  });
+
   const items = await prisma.shopping_items.findMany({
-    where: { family_id: familyId, location_id: selectedLocation.id },
+    where: {
+      family_id: familyId,
+      location_id: selectedLocation.id,
+      OR: [
+        { is_completed: false },
+        { is_completed: true, completed_at: { gte: sevenDaysAgo } },
+      ],
+    },
     include: {
       family_members_shopping_items_family_id_created_by_profile_idTofamily_members: {
         include: {
@@ -212,6 +238,9 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                 <CardTitle className="inline text-base text-muted-foreground">
                   Déjà acheté
                   <span className="ml-2 text-sm font-normal">({completedItems.length})</span>
+                  <span className="ml-2 text-xs font-normal text-muted-foreground/60">
+                    supprimé après 7 jours
+                  </span>
                 </CardTitle>
               </summary>
               <div className="mt-3 space-y-3">
@@ -220,6 +249,9 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                   const completedBy =
                     item.family_members_shopping_items_family_id_completed_by_profile_idTofamily_members
                       ?.profiles_family_members_profile_idToprofiles.display_name;
+                  const daysRemaining = item.completed_at
+                    ? getDaysRemaining(new Date(item.completed_at))
+                    : null;
 
                   return (
                     <div
@@ -238,14 +270,21 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
                                 {quantity}
                               </span>
                             ) : null}
-                            {completedBy ? (
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Validé par <span className="font-medium text-foreground/70">{completedBy}</span>
-                                {item.completed_at ? (
-                                  <> le {new Date(item.completed_at).toLocaleDateString("fr-CH")}</>
-                                ) : null}
-                              </p>
-                            ) : null}
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              {completedBy ? (
+                                <span className="text-xs text-muted-foreground">
+                                  par <span className="font-medium text-foreground/70">{completedBy}</span>
+                                  {item.completed_at ? (
+                                    <> le {new Date(item.completed_at).toLocaleDateString("fr-CH")}</>
+                                  ) : null}
+                                </span>
+                              ) : null}
+                              {daysRemaining !== null ? (
+                                <span className="text-xs text-muted-foreground/50">
+                                  expire dans {daysRemaining}j
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                           <DeleteShoppingItemButton itemId={item.id} />
                         </div>
