@@ -32,7 +32,7 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
   });
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <AppPageHeader
         eyebrow="Recettes"
         title="Carnet de cuisine"

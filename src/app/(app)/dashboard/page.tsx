@@ -83,7 +83,7 @@ export default async function DashboardPage() {
   const firstName = session.user.name?.split(" ")[0] ?? "chef";
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <AppPageHeader
         eyebrow={`${greeting} !`}
         title={firstName}
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
       />
 
       {/* Contenu principal */}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         {/* Prochains repas */}
         <Card>
           <CardHeader className="pb-3">
@@ -136,64 +136,62 @@ export default async function DashboardPage() {
                 }
               />
             ) : (
-              <ul className="divide-y">
+              <div className="space-y-3">
                 {upcomingMeals.map((meal) => {
                   const responsible =
                     meal.family_members_meal_plans_family_id_responsible_profile_idTofamily_members
                       ?.profiles_family_members_profile_idToprofiles.display_name;
                   return (
-                    <li key={meal.id}>
-                      <Link
-                        href={`/calendar/${meal.id}`}
-                        className="group flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
-                      >
-                        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                          meal.meal_slot === "lunch" ? "bg-primary/10" : "bg-primary/5"
-                        }`}>
-                          {meal.meal_slot === "lunch" ? (
-                            <UtensilsCrossed className="size-4 text-primary" />
-                          ) : (
-                            <Clock className="size-4 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium group-hover:text-primary">{meal.title}</p>
-                          <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                    <Link
+                      key={meal.id}
+                      href={`/calendar/${meal.id}`}
+                      className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                    >
+                      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${
+                        meal.meal_slot === "lunch" ? "bg-primary/10" : "bg-primary/5"
+                      }`}>
+                        {meal.meal_slot === "lunch" ? (
+                          <UtensilsCrossed className="size-5 text-primary" />
+                        ) : (
+                          <Clock className="size-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">{meal.title}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                             {new Date(meal.meal_date).toLocaleDateString("fr-FR", {
                               weekday: "short",
                               day: "numeric",
                               month: "short",
                             })}
-                            <span className="text-muted-foreground/40">·</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                             {meal.meal_slot === "lunch" ? "Midi" : "Soir"}
-                            {meal.locations ? (
-                              <>
-                                <span className="text-muted-foreground/40">·</span>
-                                <span className="inline-flex items-center gap-0.5">
-                                  <MapPin className="size-3" />
-                                  {meal.locations.name}
-                                </span>
-                              </>
-                            ) : null}
-                            {responsible ? (
-                              <>
-                                <span className="text-muted-foreground/40">·</span>
-                                {responsible}
-                              </>
-                            ) : null}
-                          </p>
+                          </span>
+                          {meal.locations ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                              <MapPin className="size-3" />
+                              {meal.locations.name}
+                            </span>
+                          ) : null}
+                          {responsible ? (
+                            <span className="text-xs text-muted-foreground">
+                              {responsible}
+                            </span>
+                          ) : null}
                         </div>
-                      </Link>
-                    </li>
+                      </div>
+                    </Link>
                   );
                 })}
-              </ul>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Colonne droite */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Recettes récentes */}
           <Card>
             <CardHeader className="pb-3">
@@ -221,25 +219,30 @@ export default async function DashboardPage() {
                   }
                 />
               ) : (
-                <ul className="divide-y">
+                <div className="space-y-3">
                   {recentRecipes.map((recipe) => (
-                    <li key={recipe.id}>
-                      <Link
-                        href={`/recipes/${recipe.id}`}
-                        className="group flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
-                      >
-                        <p className="min-w-0 truncate text-sm font-medium group-hover:text-primary">
+                    <Link
+                      key={recipe.id}
+                      href={`/recipes/${recipe.id}`}
+                      className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                    >
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <ChefHat className="size-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
                           {recipe.title}
                         </p>
                         {recipe.servings ? (
-                          <span className="shrink-0 text-xs text-muted-foreground">
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                            <Users className="size-3" />
                             {recipe.servings} p.
                           </span>
                         ) : null}
-                      </Link>
-                    </li>
+                      </div>
+                    </Link>
                   ))}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -265,33 +268,45 @@ export default async function DashboardPage() {
                   description="Ajoutez des articles ou envoyez les ingrédients d'une recette."
                 />
               ) : (
-                <ul className="divide-y">
+                <div className="space-y-3">
                   {pendingShoppingItems.map((item) => {
                     const qty = formatShoppingQuantity(item);
                     return (
-                      <li key={item.id} className="flex items-baseline justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                        <div className="min-w-0">
-                          <span className="text-sm font-medium">{item.name}</span>
-                          {item.locations ? (
-                            <span className="ml-1.5 text-xs text-muted-foreground">
-                              ({item.locations.name})
-                            </span>
-                          ) : null}
+                      <div
+                        key={item.id}
+                        className="flex items-start gap-3 rounded-xl border border-border p-3.5 sm:p-4"
+                      >
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <ShoppingCart className="size-5 text-primary" />
                         </div>
-                        {qty ? (
-                          <span className="shrink-0 text-xs text-muted-foreground">{qty}</span>
-                        ) : null}
-                      </li>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-medium leading-snug sm:text-sm">{item.name}</p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {qty ? (
+                              <span className="inline-block rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                                {qty}
+                              </span>
+                            ) : null}
+                            {item.locations ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                                <MapPin className="size-3" />
+                                {item.locations.name}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                   {totalShoppingItems > pendingShoppingItems.length ? (
-                    <li className="pt-2 text-center">
-                      <Link href="/shopping" className="text-xs text-primary hover:underline">
-                        +{totalShoppingItems - pendingShoppingItems.length} autres articles
-                      </Link>
-                    </li>
+                    <Link
+                      href="/shopping"
+                      className="block rounded-xl border border-dashed border-primary/20 bg-primary/5 p-3 text-center text-sm font-medium text-primary hover:bg-primary/10"
+                    >
+                      +{totalShoppingItems - pendingShoppingItems.length} autres articles
+                    </Link>
                   ) : null}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>

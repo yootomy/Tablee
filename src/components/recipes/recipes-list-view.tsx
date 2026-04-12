@@ -111,7 +111,7 @@ export function RecipesListView({ recipes }: RecipesListViewProps) {
 
 function ListView({ recipes }: { recipes: RecipeItem[] }) {
   return (
-    <ul className="divide-y">
+    <div className="space-y-3">
       {recipes.map((recipe) => {
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
@@ -122,40 +122,44 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
             : null;
 
         return (
-          <li key={recipe.id}>
-            <Link
-              href={`/recipes/${recipe.id}`}
-              className="group flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium group-hover:text-primary">
-                  {recipe.title}
+          <Link
+            key={recipe.id}
+            href={`/recipes/${recipe.id}`}
+            className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <ChefHat className="size-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">
+                {recipe.title}
+              </p>
+              {recipe.description?.trim() ? (
+                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                  {recipe.description}
                 </p>
-                {recipe.description?.trim() ? (
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                    {recipe.description}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {recipe.servings ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="size-3" />
-                    {recipe.servings}
-                  </span>
-                ) : null}
-                {total ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="size-3" />
-                    {total}
-                  </span>
-                ) : null}
-              </div>
-            </Link>
-          </li>
+              ) : null}
+              {(recipe.servings || total) ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {recipe.servings ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                      <Users className="size-3" />
+                      {recipe.servings} p.
+                    </span>
+                  ) : null}
+                  {total ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                      <Clock className="size-3" />
+                      {total}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </Link>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -175,43 +179,50 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
           <Link
             key={recipe.id}
             href={`/recipes/${recipe.id}`}
-            className="group relative flex aspect-[4/3] flex-col justify-end overflow-hidden rounded-xl border border-border transition-shadow hover:shadow-md"
+            className="group relative flex aspect-square flex-col justify-end overflow-hidden rounded-2xl border border-border transition-all hover:border-primary/40 hover:shadow-lg"
           >
             {/* Image or placeholder */}
             {recipe.image_url ? (
               <img
                 src={recipe.image_url}
                 alt={recipe.title}
-                className="absolute inset-0 size-full object-cover transition-transform group-hover:scale-105"
+                className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/8 to-primary/20">
-                <ChefHat className="absolute left-1/2 top-1/3 size-10 -translate-x-1/2 -translate-y-1/2 text-primary/20" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/40 to-primary/10">
+                <ChefHat className="absolute left-1/2 top-1/3 size-12 -translate-x-1/2 -translate-y-1/2 text-primary/15 transition-transform duration-300 group-hover:scale-110" />
               </div>
             )}
 
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
             {/* Text content */}
-            <div className="relative z-10 p-2.5 sm:p-3">
-              <p className="line-clamp-2 text-xs font-semibold leading-tight text-white sm:text-sm">
+            <div className="relative z-10 space-y-1.5 p-3 sm:p-3.5">
+              <p className="line-clamp-2 text-sm font-bold leading-snug text-white sm:text-base">
                 {recipe.title}
               </p>
-              <div className="mt-1 flex items-center gap-2">
-                {recipe.servings ? (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] text-white/75 sm:text-xs">
-                    <Users className="size-2.5 sm:size-3" />
-                    {recipe.servings}
-                  </span>
-                ) : null}
-                {total ? (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] text-white/75 sm:text-xs">
-                    <Clock className="size-2.5 sm:size-3" />
-                    {total}
-                  </span>
-                ) : null}
-              </div>
+              {recipe.description?.trim() ? (
+                <p className="line-clamp-1 text-[11px] text-white/60 sm:text-xs">
+                  {recipe.description}
+                </p>
+              ) : null}
+              {(recipe.servings || total) ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {recipe.servings ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm sm:text-xs">
+                      <Users className="size-3" />
+                      {recipe.servings} p.
+                    </span>
+                  ) : null}
+                  {total ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm sm:text-xs">
+                      <Clock className="size-3" />
+                      {total}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </Link>
         );
