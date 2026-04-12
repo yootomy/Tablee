@@ -142,11 +142,11 @@ export default async function DashboardPage() {
                     <Link
                       key={meal.id}
                       href={`/calendar/${meal.id}`}
-                      className="group rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                      className="group block rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-1.5">
                         <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">{meal.title}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                             {new Date(meal.meal_date).toLocaleDateString("fr-FR", {
                               weekday: "short",
