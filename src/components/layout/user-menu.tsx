@@ -26,6 +26,15 @@ export function UserMenu({ name, compact = false }: UserMenuProps) {
     .toUpperCase()
     .slice(0, 2);
 
+  async function handleSignOut() {
+    const callbackUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/tablee/login`
+        : "/tablee/login";
+
+    await signOut({ callbackUrl });
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -44,7 +53,7 @@ export function UserMenu({ name, compact = false }: UserMenuProps) {
           Mon profil
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/tablee/login" })}>
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="size-4" />
           Se déconnecter
         </DropdownMenuItem>
