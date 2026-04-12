@@ -149,8 +149,14 @@ export default async function RecipeDetailPage({
           </>
         }
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+        <div
+          className={
+            recipeImageUrl
+              ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end"
+              : "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+          }
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             {recipe.source_url ? (
               <a
                 href={recipe.source_url}
@@ -165,9 +171,9 @@ export default async function RecipeDetailPage({
           </div>
 
           {recipeImageUrl ? (
-            <div className="w-full sm:w-44">
-              <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-lg backdrop-blur-sm">
-                <div className="aspect-[16/10] w-full overflow-hidden">
+            <div className="w-full lg:justify-self-end lg:max-w-[360px]">
+              <div className="overflow-hidden rounded-[1.6rem] border border-white/20 bg-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                <div className="aspect-[16/9] w-full overflow-hidden bg-white/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={recipeImageUrl}
