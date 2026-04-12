@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHero } from "@/components/layout/page-hero";
+import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import {
   addDays,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/calendar";
 
 type MealSlot = "lunch" | "dinner";
+type CalendarDisplayMode = "week" | "month" | "list";
 
 type MealData = {
   id: string;
@@ -36,6 +38,7 @@ type MealData = {
 
 type CalendarViewProps = {
   initialWeekStart: string;
+  initialView: CalendarDisplayMode;
   meals: MealData[];
   locationNameById: Record<string, string>;
   memberNameByProfileId: Record<string, string>;
@@ -61,6 +64,7 @@ function getStatusBadge(status: "planned" | "done" | "canceled") {
 
 export function CalendarView({
   initialWeekStart,
+  initialView,
   meals,
   locationNameById,
   memberNameByProfileId,
@@ -69,14 +73,32 @@ export function CalendarView({
   locations,
 }: CalendarViewProps) {
   const router = useRouter();
-  const [view, setView] = useState<"week" | "month">("week");
-  const [currentDate, setCurrentDate] = useState(() => parseDateOnly(initialWeekStart));
-  const [selectedDay, setSelectedDay] = useState(() => new Date());
-
+  const view = initialView;
+  const currentDate = parseDateOnly(initialWeekStart);
   const today = new Date();
   const weekStart = getWeekStart(currentDate);
   const weekDates = getWeekDates(weekStart);
   const monthGridDates = getMonthGridDates(currentDate);
+  const [selectedDay, setSelectedDay] = useState(
+    () => weekDates.find((date) => isSameDay(date, today)) ?? weekDates[0],
+  );
+
+  function pushCalendarState(next: {
+    date?: Date;
+    view?: CalendarDisplayMode;
+    locationId?: string;
+  }) {
+    const params = new URLSearchParams({
+      week: formatDateKey(next.date ?? currentDate),
+      view: next.view ?? view,
+    });
+
+    if (next.locationId) {
+      params.set("locationId", next.locationId);
+    }
+
+    router.push(`/calendar?${params.toString()}`);
+  }
 
   const mealsBySlotKey = new Map<string, MealData[]>();
   for (const meal of meals) {
@@ -100,83 +122,203 @@ export function CalendarView({
     }
   }
 
+  const sortedMeals = [...meals].sort((a, b) => {
+    const dateDiff = a.meal_date.getTime() - b.meal_date.getTime();
+
+    if (dateDiff !== 0) {
+      return dateDiff;
+    }
+
+    if (a.meal_slot === b.meal_slot) {
+      return 0;
+    }
+
+    return a.meal_slot === "lunch" ? -1 : 1;
+  });
+
+  const todayKey = formatDateKey(today);
+  const upcomingMeals = sortedMeals.filter(
+    (meal) => formatDateKey(meal.meal_date) >= todayKey,
+  );
+  const pastMeals = [...sortedMeals]
+    .filter((meal) => formatDateKey(meal.meal_date) < todayKey)
+    .reverse();
+
   function navigateWeek(direction: number) {
-    setCurrentDate((date) => addDays(date, direction * 7));
+    pushCalendarState({
+      date: addDays(currentDate, direction * 7),
+    });
   }
 
   function navigateMonth(direction: number) {
-    setCurrentDate((date) => addMonths(date, direction));
+    pushCalendarState({
+      date: addMonths(currentDate, direction),
+    });
   }
 
   function goToToday() {
-    setCurrentDate(new Date());
-    setSelectedDay(new Date());
+    pushCalendarState({
+      date: today,
+    });
   }
 
   const currentPeriodLabel =
     view === "week"
-      ? `${weekDates[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} – ${weekDates[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`
-      : formatMonthYear(currentDate);
+      ? `${weekDates[0].toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+        })} – ${weekDates[6].toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}`
+      : view === "month"
+        ? formatMonthYear(currentDate)
+        : "Tous les repas";
   const currentLocationLabel = selectedLocationId
     ? locationNameById[selectedLocationId]
     : "Tous les lieux";
+
+  function renderListMealCard(meal: MealData) {
+    const status = getStatusBadge(meal.status);
+    const formattedDate = meal.meal_date.toLocaleDateString("fr-FR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    return (
+      <Link
+        key={meal.id}
+        href={`/calendar/${meal.id}`}
+        className="group block rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-accent/20 hover:shadow-md"
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-primary/8 px-3 py-2 text-center">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {meal.meal_slot === "lunch" ? "Midi" : "Soir"}
+            </span>
+            <span className="mt-1 text-xs font-medium capitalize text-muted-foreground">
+              {meal.meal_date.toLocaleDateString("fr-FR", {
+                day: "2-digit",
+                month: "short",
+              })}
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-foreground group-hover:text-primary">
+                  {meal.title}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground capitalize">
+                  {formattedDate}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium ${status.className}`}
+              >
+                {status.label}
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {meal.location_id && locationNameById[meal.location_id] ? (
+                <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-foreground">
+                  {locationNameById[meal.location_id]}
+                </span>
+              ) : null}
+              {meal.responsible_profile_id &&
+              memberNameByProfileId[meal.responsible_profile_id] ? (
+                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {memberNameByProfileId[meal.responsible_profile_id]}
+                </span>
+              ) : null}
+            </div>
+
+            {meal.notes ? (
+              <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+                {meal.notes}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <PageHero
         eyebrow="Calendrier"
         title={currentPeriodLabel}
-        description="Visualise les repas de la famille, puis planifie ou ajuste la semaine sans quitter le contexte."
-        meta={`${view === "week" ? "Vue semaine" : "Vue mois"} • ${currentLocationLabel}`}
+        description={
+          view === "list"
+            ? "Retrouve tous les repas déjà planifiés dans une vue simple à parcourir, puis ouvre la fiche qui t’intéresse."
+            : "Visualise les repas de la famille, puis planifie ou ajuste la semaine sans quitter le contexte."
+        }
+        meta={`${view === "week" ? "Vue semaine" : view === "month" ? "Vue mois" : "Vue liste"} • ${currentLocationLabel}`}
       >
         <div className="rounded-2xl bg-white/10 p-3 sm:p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => (view === "week" ? navigateWeek(-1) : navigateMonth(-1))}
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "icon-sm",
-                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
-                })}
-              >
-                ‹
-              </button>
-              <button
-                onClick={() => (view === "week" ? navigateWeek(1) : navigateMonth(1))}
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "icon-sm",
-                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
-                })}
-              >
-                ›
-              </button>
-              <button
-                onClick={goToToday}
-                className={buttonVariants({
-                  size: "sm",
-                  variant: "outline",
-                  className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
-                })}
-              >
-                Aujourd&apos;hui
-              </button>
-            </div>
+            {view === "list" ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-white/85">
+                <span className="rounded-full bg-white/15 px-2.5 py-1">
+                  {upcomingMeals.length} à venir
+                </span>
+                <span className="rounded-full bg-white/15 px-2.5 py-1">
+                  {pastMeals.length} passés
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() =>
+                    view === "week" ? navigateWeek(-1) : navigateMonth(-1)
+                  }
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "icon-sm",
+                    className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                  })}
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() =>
+                    view === "week" ? navigateWeek(1) : navigateMonth(1)
+                  }
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "icon-sm",
+                    className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                  })}
+                >
+                  ›
+                </button>
+                <button
+                  onClick={goToToday}
+                  className={buttonVariants({
+                    size: "sm",
+                    variant: "outline",
+                    className: "border-white/20 bg-white/95 text-foreground hover:bg-white",
+                  })}
+                >
+                  Aujourd&apos;hui
+                </button>
+              </div>
+            )}
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
               {locations.length > 1 && (
                 <select
                   value={selectedLocationId}
                   onChange={(event) => {
-                    const params = new URLSearchParams(window.location.search);
-                    if (event.target.value) {
-                      params.set("locationId", event.target.value);
-                    } else {
-                      params.delete("locationId");
-                    }
-                    params.set("week", formatDateKey(weekStart));
-                    router.push(`/calendar?${params.toString()}`);
+                    pushCalendarState({
+                      locationId: event.target.value,
+                    });
                   }}
                   className="h-11 w-full rounded-full border border-white/20 bg-white/95 px-4 text-base text-foreground outline-none transition-colors focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25 sm:w-auto sm:min-w-[11rem] md:h-9 md:text-sm"
                 >
@@ -191,7 +333,7 @@ export function CalendarView({
 
               <div className="flex self-start rounded-full bg-white/15 p-0.5">
                 <button
-                  onClick={() => setView("week")}
+                  onClick={() => pushCalendarState({ view: "week" })}
                   className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
                     view === "week"
                       ? "bg-white text-primary"
@@ -201,7 +343,7 @@ export function CalendarView({
                   Semaine
                 </button>
                 <button
-                  onClick={() => setView("month")}
+                  onClick={() => pushCalendarState({ view: "month" })}
                   className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
                     view === "month"
                       ? "bg-white text-primary"
@@ -209,6 +351,16 @@ export function CalendarView({
                   }`}
                 >
                   Mois
+                </button>
+                <button
+                  onClick={() => pushCalendarState({ view: "list" })}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors md:px-4 md:py-1.5 ${
+                    view === "list"
+                      ? "bg-white text-primary"
+                      : "text-white/80 hover:text-white"
+                  }`}
+                >
+                  Liste
                 </button>
               </div>
             </div>
@@ -303,7 +455,7 @@ export function CalendarView({
           </div>
 
           <div className="xl:hidden">
-            <div className="mb-4 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 snap-x snap-mandatory">
+            <div className="mb-4 -mx-1 flex snap-x snap-mandatory gap-1 overflow-x-auto px-1 pb-1">
               {weekDates.map((date) => {
                 const isSelected = isSameDay(date, selectedDay);
                 const isToday = isSameDay(date, today);
@@ -449,9 +601,8 @@ export function CalendarView({
                   <button
                     key={dateKey + index}
                     onClick={() => {
-                      setCurrentDate(date);
                       setSelectedDay(date);
-                      setView("week");
+                      pushCalendarState({ date, view: "week" });
                     }}
                     className={`min-h-[100px] border-l border-t border-border p-1.5 text-left transition-colors hover:bg-accent/30 first:border-l-0 [&:nth-child(-n+7)]:border-t-0 ${
                       isToday ? "bg-accent/20" : ""
@@ -518,9 +669,8 @@ export function CalendarView({
                   <button
                     key={dateKey + index}
                     onClick={() => {
-                      setCurrentDate(date);
                       setSelectedDay(date);
-                      setView("week");
+                      pushCalendarState({ date, view: "week" });
                     }}
                     className={`flex min-h-[3rem] flex-col items-center justify-center gap-1 border-l border-t border-border px-1 py-2 transition-colors first:border-l-0 [&:nth-child(7n+1)]:border-l-0 [&:nth-child(-n+14)]:border-t-0 ${
                       !isCurrentMonth ? "opacity-30" : ""
@@ -548,6 +698,82 @@ export function CalendarView({
             </div>
           </div>
         </>
+      )}
+
+      {view === "list" && (
+        <div className="space-y-6">
+          {sortedMeals.length === 0 ? (
+            <EmptyState
+              title="Aucun repas planifié"
+              description="Ajoute un premier repas pour commencer à remplir la liste familiale."
+              action={
+                <Link
+                  href={`/calendar/new?date=${formatDateKey(today)}&slot=lunch&locationId=${encodeURIComponent(defaultLocationId)}`}
+                  className={buttonVariants()}
+                >
+                  Ajouter un repas
+                </Link>
+              }
+            />
+          ) : (
+            <>
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold">À venir</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Les prochains repas que la famille va réellement utiliser.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-foreground">
+                    {upcomingMeals.length}
+                  </span>
+                </div>
+
+                {upcomingMeals.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingMeals.map((meal) => renderListMealCard(meal))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                    Aucun repas à venir pour ce filtre.
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold">Passés</h2>
+                    <p className="text-sm text-muted-foreground">
+                      L’historique des repas déjà planifiés, utile pour retrouver une idée rapidement.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    {pastMeals.length}
+                  </span>
+                </div>
+
+                {pastMeals.length > 0 ? (
+                  <div className="space-y-3">
+                    {pastMeals.map((meal) => renderListMealCard(meal))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                    Aucun repas passé pour ce filtre.
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+
+          <Link
+            href={`/calendar/new?date=${formatDateKey(today)}&slot=lunch&locationId=${encodeURIComponent(defaultLocationId)}`}
+            className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex size-14 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground shadow-lg transition-transform hover:scale-105 md:hidden"
+          >
+            +
+          </Link>
+        </div>
       )}
     </div>
   );

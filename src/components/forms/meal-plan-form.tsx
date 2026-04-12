@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   createMealPlan,
-  deleteMealPlan,
   updateMealPlan,
 } from "@/actions/meal-plans";
 import { FormSection } from "@/components/shared/form-section";
@@ -61,7 +60,6 @@ export function MealPlanForm({
   const [status, setStatus] = useState(initialValues.status);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showMore, setShowMore] = useState(
     mode === "edit" || !!initialValues.notes || !!initialValues.responsibleProfileId,
   );
@@ -83,22 +81,6 @@ export function MealPlanForm({
     if (!result.success) {
       setError(result.error);
       setLoading(false);
-    }
-  }
-
-  async function handleDelete(formData: FormData) {
-    if (!window.confirm("Supprimer ce repas du calendrier ?")) {
-      return;
-    }
-
-    setDeleting(true);
-    setError(null);
-
-    const result = await deleteMealPlan(formData);
-
-    if (!result.success) {
-      setError(result.error);
-      setDeleting(false);
     }
   }
 
@@ -282,7 +264,7 @@ export function MealPlanForm({
         ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Button type="submit" className="w-full sm:w-auto" disabled={loading || deleting}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
             {loading
               ? mode === "create"
                 ? "Création..."
@@ -299,20 +281,6 @@ export function MealPlanForm({
           </Link>
         </div>
       </form>
-
-      {mode === "edit" && mealPlanId ? (
-        <form action={handleDelete} className="border-t border-border pt-6">
-          <input type="hidden" name="mealPlanId" value={mealPlanId} />
-          <Button
-            type="submit"
-            variant="destructive"
-            disabled={loading || deleting}
-            formAction={handleDelete}
-          >
-            {deleting ? "Suppression..." : "Supprimer ce repas"}
-          </Button>
-        </form>
-      ) : null}
     </div>
   );
 }

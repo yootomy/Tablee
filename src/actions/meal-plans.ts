@@ -213,9 +213,8 @@ export async function updateMealPlan(formData: FormData): Promise<ActionResult> 
   redirect(getMealWeekHref(payload.data.mealDate, payload.data.locationId));
 }
 
-export async function deleteMealPlan(formData: FormData): Promise<ActionResult> {
+export async function deleteMealPlan(mealPlanId: string): Promise<ActionResult> {
   const { familyId } = await requireActiveFamily();
-  const mealPlanId = formData.get("mealPlanId");
 
   if (typeof mealPlanId !== "string") {
     return { success: false, error: "Le repas demandé est introuvable" };
@@ -241,6 +240,8 @@ export async function deleteMealPlan(formData: FormData): Promise<ActionResult> 
     where: { id: mealPlanId },
   });
 
+  revalidatePath(`/calendar/${mealPlanId}`);
+  revalidatePath(`/calendar/${mealPlanId}/edit`);
   revalidateMealPlanViews(existingMealPlan.meal_date);
   redirect(getMealWeekHref(existingMealPlan.meal_date, existingMealPlan.location_id));
 }

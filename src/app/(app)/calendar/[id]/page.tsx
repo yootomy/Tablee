@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getMealWeekHref } from "@/lib/calendar";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
+import { DeleteMealPlanButton } from "@/components/calendar/delete-meal-plan-button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -157,6 +158,10 @@ export default async function MealDetailPage({ params }: MealDetailPageProps) {
             >
               Retour au calendrier
             </Link>
+            <DeleteMealPlanButton
+              mealPlanId={mealPlan.id}
+              mealPlanTitle={mealPlan.title}
+            />
           </>
         }
       />

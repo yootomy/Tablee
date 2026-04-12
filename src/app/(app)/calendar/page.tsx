@@ -15,7 +15,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
 type CalendarPageProps = {
-  searchParams: Promise<{ week?: string | string[]; locationId?: string | string[] }>;
+  searchParams: Promise<{
+    week?: string | string[];
+    locationId?: string | string[];
+    view?: string | string[];
+  }>;
 };
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
@@ -27,6 +31,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const rawLocationId = Array.isArray(resolvedSearchParams.locationId)
     ? resolvedSearchParams.locationId[0]
     : resolvedSearchParams.locationId;
+  const rawView = Array.isArray(resolvedSearchParams.view)
+    ? resolvedSearchParams.view[0]
+    : resolvedSearchParams.view;
+  const resolvedView =
+    rawView === "month" || rawView === "list" ? rawView : "week";
 
   const today = new Date();
   const referenceDate =
@@ -49,10 +58,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     prisma.meal_plans.findMany({
       where: {
         family_id: familyId,
-        meal_date: {
-          gte: rangeStart,
-          lte: rangeEnd,
-        },
+        ...(resolvedView === "list"
+          ? {}
+          : {
+              meal_date: {
+                gte: rangeStart,
+                lte: rangeEnd,
+              },
+            }),
       },
       orderBy: [{ meal_date: "asc" }, { meal_slot: "asc" }, { created_at: "asc" }],
     }),
@@ -140,7 +153,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   return (
     <div className="p-4 sm:p-6">
       <CalendarView
+        key={`${resolvedView}:${formatDateKey(weekStart)}:${selectedLocationId || "all"}`}
         initialWeekStart={formatDateKey(weekStart)}
+        initialView={resolvedView}
         meals={serializedMeals}
         locationNameById={locationNameById}
         memberNameByProfileId={memberNameByProfileId}
