@@ -14,9 +14,6 @@ import {
   Users,
   Plus,
   ArrowRight,
-  UtensilsCrossed,
-  Clock,
-  MapPin,
 } from "lucide-react";
 
 function formatShoppingQuantity(item: {
@@ -126,7 +123,6 @@ export default async function DashboardPage() {
           <CardContent className="pt-0">
             {upcomingMeals.length === 0 ? (
               <EmptyState
-                icon={<UtensilsCrossed className="size-10 text-muted-foreground/40" />}
                 title="Aucun repas prévu"
                 description="Planifiez vos repas depuis le calendrier."
                 action={
@@ -146,18 +142,9 @@ export default async function DashboardPage() {
                     <Link
                       key={meal.id}
                       href={`/calendar/${meal.id}`}
-                      className="group flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
+                      className="group rounded-xl border border-border p-3.5 transition-colors hover:border-primary/40 hover:bg-accent/30 sm:p-4"
                     >
-                      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${
-                        meal.meal_slot === "lunch" ? "bg-primary/10" : "bg-primary/5"
-                      }`}>
-                        {meal.meal_slot === "lunch" ? (
-                          <UtensilsCrossed className="size-5 text-primary" />
-                        ) : (
-                          <Clock className="size-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0">
                         <p className="text-base font-medium leading-snug group-hover:text-primary sm:text-sm">{meal.title}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
@@ -171,8 +158,7 @@ export default async function DashboardPage() {
                             {meal.meal_slot === "lunch" ? "Midi" : "Soir"}
                           </span>
                           {meal.locations ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                              <MapPin className="size-3" />
+                            <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                               {meal.locations.name}
                             </span>
                           ) : null}
@@ -247,8 +233,7 @@ export default async function DashboardPage() {
                             {recipe.title}
                           </p>
                           {recipe.servings ? (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                              <Users className="size-3" />
+                            <span className="mt-1 inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                               {recipe.servings} p.
                             </span>
                           ) : null}
@@ -277,7 +262,6 @@ export default async function DashboardPage() {
             <CardContent className="pt-0">
               {pendingShoppingItems.length === 0 ? (
                 <EmptyState
-                  icon={<ShoppingCart className="size-10 text-muted-foreground/40" />}
                   title="Liste vide"
                   description="Ajoutez des articles ou envoyez les ingrédients d'une recette."
                 />
@@ -288,12 +272,9 @@ export default async function DashboardPage() {
                     return (
                       <div
                         key={item.id}
-                        className="flex items-start gap-3 rounded-xl border border-border p-3.5 sm:p-4"
+                        className="rounded-xl border border-border p-3.5 sm:p-4"
                       >
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                          <ShoppingCart className="size-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                           <p className="text-base font-medium leading-snug sm:text-sm">{item.name}</p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {qty ? (
@@ -302,8 +283,7 @@ export default async function DashboardPage() {
                               </span>
                             ) : null}
                             {item.locations ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                                <MapPin className="size-3" />
+                              <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                                 {item.locations.name}
                               </span>
                             ) : null}
