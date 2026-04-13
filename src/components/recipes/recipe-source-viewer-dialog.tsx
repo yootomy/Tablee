@@ -83,8 +83,8 @@ export function RecipeSourceViewerDialog({
 
   const frameClassName =
     embed.kind === "square"
-      ? "aspect-square w-full"
-      : "aspect-[9/16] w-full";
+      ? "aspect-square max-h-[min(55vh,20rem)] w-auto mx-auto"
+      : "aspect-[9/16] max-h-[min(65vh,26rem)] w-auto mx-auto";
 
   return (
     <>
@@ -108,7 +108,7 @@ export function RecipeSourceViewerDialog({
             role="dialog"
             aria-modal="true"
             aria-labelledby="recipe-source-dialog-title"
-            className="w-full max-w-[min(100vw-2rem,32rem)] overflow-hidden rounded-[1.75rem] border border-border bg-background shadow-2xl"
+            className="flex max-h-[90dvh] w-full max-w-[min(100vw-2rem,32rem)] flex-col overflow-hidden rounded-[1.75rem] border border-border bg-background shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
@@ -135,8 +135,8 @@ export function RecipeSourceViewerDialog({
               </Button>
             </div>
 
-            <div className="bg-muted/30 p-3 sm:p-4">
-              <div className="mx-auto w-full max-w-[26rem]">
+            <div className="overflow-y-auto bg-muted/30 p-3 sm:p-4">
+              <div className="flex w-full justify-center">
                 <div className={`${frameClassName} overflow-hidden rounded-[1.4rem] border border-border bg-black shadow-sm`}>
                   <iframe
                     src={embed.embedUrl}
