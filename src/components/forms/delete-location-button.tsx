@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { deleteLocation } from "@/actions/locations";
 import { Button } from "@/components/ui/button";
 import { Trash2, X } from "lucide-react";
@@ -14,6 +15,7 @@ export function DeleteLocationButton({
   locationId,
   locationName,
 }: DeleteLocationButtonProps) {
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function DeleteLocationButton({
       return;
     }
     setConfirming(false);
+    router.refresh();
   }
 
   if (confirming) {

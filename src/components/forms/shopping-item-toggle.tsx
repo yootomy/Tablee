@@ -1,7 +1,7 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useTransition } from "react";
 import { toggleShoppingItem } from "@/actions/shopping";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,19 +18,28 @@ export function ShoppingItemToggle({
 }: ShoppingItemToggleProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [optimisticChecked, setOptimisticChecked] = useOptimistic(checked);
+  // useState instead of useOptimistic: avoids the revert flash caused by
+  // useOptimistic resetting to the checked prop when the transition ends
+  // before router.refresh() has completed (refresh() returns void, not Promise)
+  const [localChecked, setLocalChecked] = useState(checked);
 
   function handleClick() {
-    const nextCompleted = !optimisticChecked;
+    const nextCompleted = !localChecked;
+    setLocalChecked(nextCompleted);
 
     startTransition(async () => {
-      setOptimisticChecked(nextCompleted);
-
       const formData = new FormData();
       formData.set("itemId", itemId);
       formData.set("nextCompleted", nextCompleted ? "true" : "false");
 
-      await toggleShoppingItem(formData);
+      const result = await toggleShoppingItem(formData);
+
+      if (!result.success) {
+        setLocalChecked(!nextCompleted);
+        toast.error("Erreur lors de la mise à jour");
+        return;
+      }
+
       toast.success(nextCompleted ? "Article complété" : "Article remis dans la liste");
       router.refresh();
     });
@@ -40,17 +49,18 @@ export function ShoppingItemToggle({
     <button
       type="button"
       role="checkbox"
-      aria-checked={optimisticChecked}
+      aria-checked={localChecked}
       disabled={isPending}
       onClick={handleClick}
       className={cn(
         "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-2 transition-all",
-        optimisticChecked
+        localChecked
           ? "border-primary bg-primary text-primary-foreground"
           : "border-input bg-background hover:border-primary/50",
+        isPending && "opacity-60",
       )}
     >
-      {optimisticChecked ? <Check className="size-3.5" strokeWidth={3} /> : null}
+      {localChecked ? <Check className="size-3.5" strokeWidth={3} /> : null}
     </button>
   );
 }

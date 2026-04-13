@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { addManualShoppingItem } from "@/actions/shopping";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export function ManualShoppingItemForm({
   locationId,
   onSuccess,
 }: ManualShoppingItemFormProps) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export function ManualShoppingItemForm({
     formRef.current?.reset();
     toast.success("Article ajouté");
     setLoading(false);
+    router.refresh();
     onSuccess?.();
   }
 

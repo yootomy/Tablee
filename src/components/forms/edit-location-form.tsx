@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { updateLocation } from "@/actions/locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ export function EditLocationForm({
   locationId,
   initialName,
 }: EditLocationFormProps) {
+  const router = useRouter();
   const [name, setName] = useState(initialName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,7 @@ export function EditLocationForm({
 
     setEditing(false);
     setLoading(false);
+    router.refresh();
   }
 
   function handleCancel() {
