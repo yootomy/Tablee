@@ -5,13 +5,15 @@ const {
   mockFindFirst,
   mockCreate,
   mockUpdateMany,
-  mockAssertRateLimit,
+  mockResolveFamilyEntitlements,
+  mockCountProfileImportsInRolling24Hours,
 } = vi.hoisted(() => ({
   mockCount: vi.fn(),
   mockFindFirst: vi.fn(),
   mockCreate: vi.fn(),
   mockUpdateMany: vi.fn(),
-  mockAssertRateLimit: vi.fn(),
+  mockResolveFamilyEntitlements: vi.fn(),
+  mockCountProfileImportsInRolling24Hours: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -29,6 +31,11 @@ vi.mock("@/lib/app-schema", () => ({
   ensureOperationalSchema: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/family-billing", () => ({
+  resolveFamilyEntitlements: mockResolveFamilyEntitlements,
+  countProfileImportsInRolling24Hours: mockCountProfileImportsInRolling24Hours,
+}));
+
 vi.mock("@/lib/rate-limit", () => ({
   RateLimitExceededError: class RateLimitExceededError extends Error {
     constructor(
@@ -38,7 +45,6 @@ vi.mock("@/lib/rate-limit", () => ({
       super(message);
     }
   },
-  assertRateLimit: mockAssertRateLimit,
 }));
 
 import { createRecipeImportJob } from "@/lib/recipe-import-jobs";
@@ -46,8 +52,22 @@ import { createRecipeImportJob } from "@/lib/recipe-import-jobs";
 describe("recipe-import-jobs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAssertRateLimit.mockResolvedValue(undefined);
     mockUpdateMany.mockResolvedValue({ count: 0 });
+    mockResolveFamilyEntitlements.mockResolvedValue({
+      plan: "free",
+      aiLimits: {
+        familyRolling30Day: 5,
+        familyRolling24h: null,
+        hiddenProfileRolling24h: 15,
+      },
+      aiUsage: {
+        familyRolling30DayUsed: 0,
+        familyRolling30DayRemaining: 5,
+        familyRolling24hUsed: 0,
+        familyRolling24hRemaining: null,
+      },
+    });
+    mockCountProfileImportsInRolling24Hours.mockResolvedValue(0);
   });
 
   it("réutilise une recette récente déjà importée", async () => {
@@ -102,5 +122,33 @@ describe("recipe-import-jobs", () => {
         }),
       }),
     );
+  });
+
+  it("bloque quand le quota gratuit sur 30 jours est atteint", async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindFirst.mockResolvedValue(null);
+    mockResolveFamilyEntitlements.mockResolvedValue({
+      plan: "free",
+      aiLimits: {
+        familyRolling30Day: 5,
+        familyRolling24h: null,
+        hiddenProfileRolling24h: 15,
+      },
+      aiUsage: {
+        familyRolling30DayUsed: 5,
+        familyRolling30DayRemaining: 0,
+        familyRolling24hUsed: 0,
+        familyRolling24hRemaining: null,
+      },
+    });
+
+    await expect(
+      createRecipeImportJob({
+        familyId: "family-1",
+        profileId: "profile-1",
+        provider: "gemini",
+        sourceUrl: "https://www.tiktok.com/@foo/video/123",
+      }),
+    ).rejects.toThrow(/premium/i);
   });
 });

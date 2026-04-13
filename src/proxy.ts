@@ -40,6 +40,7 @@ export function proxy(request: NextRequest) {
 
   if (
     normalizedPathname.startsWith("/api/auth") ||
+    normalizedPathname.startsWith("/api/stripe/webhook") ||
     PUBLIC_PATHS.has(normalizedPathname)
   ) {
     return NextResponse.next();

@@ -2,15 +2,13 @@ import crypto from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureOperationalSchema } from "@/lib/app-schema";
-import { RateLimitExceededError, assertRateLimit } from "@/lib/rate-limit";
+import {
+  countProfileImportsInRolling24Hours,
+  resolveFamilyEntitlements,
+} from "@/lib/family-billing";
+import { RateLimitExceededError } from "@/lib/rate-limit";
 
 const STALE_IMPORT_MS = 30 * 60 * 1000;
-const FAMILY_DAILY_IMPORT_LIMIT = Number(
-  process.env.AI_RECIPE_IMPORT_FAMILY_DAILY_LIMIT ?? 25,
-);
-const PROFILE_DAILY_IMPORT_LIMIT = Number(
-  process.env.AI_RECIPE_IMPORT_PROFILE_DAILY_LIMIT ?? 8,
-);
 const MAX_CONCURRENT_IMPORTS_PER_FAMILY = Number(
   process.env.AI_RECIPE_IMPORT_MAX_CONCURRENT_PER_FAMILY ?? 1,
 );
@@ -57,24 +55,6 @@ export async function createRecipeImportJob(input: {
   await ensureOperationalSchema();
   await cleanupStaleRecipeImportJobs();
 
-  await assertRateLimit({
-    scope: "recipe-import:profile:day",
-    identifier: input.profileId,
-    limit: PROFILE_DAILY_IMPORT_LIMIT,
-    windowMs: 24 * 60 * 60 * 1000,
-    message:
-      "Tu as atteint la limite quotidienne d'imports IA pour ton compte. Réessaie demain.",
-  });
-
-  await assertRateLimit({
-    scope: "recipe-import:family:day",
-    identifier: input.familyId,
-    limit: FAMILY_DAILY_IMPORT_LIMIT,
-    windowMs: 24 * 60 * 60 * 1000,
-    message:
-      "Cette famille a atteint sa limite quotidienne d'imports IA. Réessaie demain.",
-  });
-
   const sourceUrlHash = hashSourceUrl(input.sourceUrl);
   const now = new Date();
   const recentCutoff = new Date(Date.now() - STALE_IMPORT_MS);
@@ -113,6 +93,39 @@ export async function createRecipeImportJob(input: {
       reusedRecipeId: matchingRecentJob.recipe_id,
       job: null,
     };
+  }
+
+  const [entitlements, profileRolling24hUsage] = await Promise.all([
+    resolveFamilyEntitlements(input.familyId),
+    countProfileImportsInRolling24Hours(input.profileId),
+  ]);
+
+  if (profileRolling24hUsage >= entitlements.aiLimits.hiddenProfileRolling24h) {
+    throw new RateLimitExceededError(
+      "Tu as atteint la limite cachée d'imports IA pour ton compte sur 24 heures. Réessaie demain.",
+      60,
+    );
+  }
+
+  if (
+    entitlements.aiUsage.familyRolling30DayUsed >= entitlements.aiLimits.familyRolling30Day
+  ) {
+    throw new RateLimitExceededError(
+      entitlements.plan === "premium"
+        ? "Cette famille a atteint sa limite d'imports IA sur 30 jours. Réessaie plus tard."
+        : "Le quota gratuit de 5 imports IA sur 30 jours est atteint pour cette famille. Passe au Premium pour débloquer plus d'imports.",
+      60,
+    );
+  }
+
+  if (
+    entitlements.aiLimits.familyRolling24h !== null &&
+    entitlements.aiUsage.familyRolling24hUsed >= entitlements.aiLimits.familyRolling24h
+  ) {
+    throw new RateLimitExceededError(
+      "Cette famille a atteint sa limite Premium d'imports IA pour les dernières 24 heures. Réessaie demain.",
+      60,
+    );
   }
 
   const job = await prisma.recipe_import_jobs.create({
@@ -166,5 +179,17 @@ export async function markRecipeImportJobFailed(input: {
       finished_at: new Date(),
       updated_at: new Date(),
     },
+  });
+}
+
+export async function getRecentRecipeImportJobsForFamily(familyId: string, limit = 12) {
+  await ensureOperationalSchema();
+
+  return prisma.recipe_import_jobs.findMany({
+    where: {
+      family_id: familyId,
+    },
+    orderBy: [{ created_at: "desc" }],
+    take: limit,
   });
 }

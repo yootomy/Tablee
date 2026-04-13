@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/profile", label: "Membres", exact: true },
   { href: "/profile/locations", label: "Lieux" },
+  { href: "/profile/billing", label: "Abonnement" },
 ];
 
 export function ProfileSectionNav({ inverse = false }: { inverse?: boolean }) {

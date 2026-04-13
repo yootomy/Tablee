@@ -12,12 +12,14 @@ interface ImportRecipeDialogProps {
   buttonClassName?: string;
   buttonLabel?: string;
   buttonVariant?: "default" | "outline" | "secondary";
+  disabled?: boolean;
 }
 
 export function ImportRecipeDialog({
   buttonClassName,
   buttonLabel = "Importer un lien",
   buttonVariant = "outline",
+  disabled = false,
 }: ImportRecipeDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -103,6 +105,7 @@ export function ImportRecipeDialog({
         type="button"
         variant={buttonVariant}
         className={buttonClassName}
+        disabled={disabled}
         onClick={() => setOpen(true)}
       >
         {buttonLabel}

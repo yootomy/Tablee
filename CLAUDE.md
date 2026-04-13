@@ -50,12 +50,17 @@
   - `src/lib/location-preferences.ts`
 - AI recipe import lives in `src/lib/recipe-import.ts`.
 - Import jobs and quotas are tracked in `recipe_import_jobs`.
+- Family Premium billing lives in `src/lib/family-billing.ts` and `src/lib/stripe.ts`.
 - Postgres-backed abuse protection lives in `request_rate_limits`.
 - If both keys exist, the social import should prefer Gemini automatically.
 - Relevant env vars:
   - `GEMINI_API_KEY`
   - `OPENAI_API_KEY`
   - optional `AI_RECIPE_IMPORT_PROVIDER=gemini|openai`
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PRICE_ID_PREMIUM_SMALL_MONTHLY`
+  - `STRIPE_PRICE_ID_PREMIUM_LARGE_MONTHLY`
   - rate-limit and AI limit vars from `.env.example`
 
 ## Important files
@@ -65,6 +70,8 @@
 - Global styles: `src/app/globals.css`
 - Auth helpers: `src/lib/auth-utils.ts`
 - Abuse control: `src/lib/rate-limit.ts`
+- Billing / entitlements: `src/lib/family-billing.ts`
+- Stripe integration: `src/lib/stripe.ts`
 - Runtime schema guards: `src/lib/app-schema.ts`
 - Prisma schema: `prisma/schema.prisma`
 - UI notes: `docs/design-system.md`
@@ -154,6 +161,11 @@ npm run build
   - `Nouveau repas`
   - `Calendrier`
   - recipe-to-shopping flows
+- If a user asks for billing changes, verify these surfaces:
+  - `Mon profil > Abonnement`
+  - `Recettes` import spotlight
+  - Stripe webhook route `/api/stripe/webhook`
+  - family member add/remove flows because they can change the next billing tier
 
 ## Short product reminder
 

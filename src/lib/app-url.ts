@@ -1,0 +1,27 @@
+const APP_BASE_PATH = "/tablee";
+
+function normalizeBaseUrl(baseUrl: string) {
+  const trimmed = baseUrl.trim().replace(/\/+$/, "");
+
+  return trimmed.endsWith(APP_BASE_PATH)
+    ? trimmed
+    : `${trimmed}${APP_BASE_PATH}`;
+}
+
+export function getAppBaseUrl() {
+  const configuredBaseUrl = process.env.NEXTAUTH_URL;
+
+  if (!configuredBaseUrl) {
+    throw new Error(
+      "NEXTAUTH_URL doit être configuré pour générer les URLs absolues de l'application.",
+    );
+  }
+
+  return normalizeBaseUrl(configuredBaseUrl);
+}
+
+export function buildAppUrl(pathname: string) {
+  const normalizedPathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${getAppBaseUrl()}${normalizedPathname}`;
+}
+

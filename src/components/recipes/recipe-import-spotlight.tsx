@@ -1,8 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { ImportRecipeDialog } from "@/components/recipes/import-recipe-dialog";
 
-export function RecipeImportSpotlight() {
+type RecipeImportSpotlightProps = {
+  isPremium: boolean;
+  isBlocked: boolean;
+  quotaHeadline: string;
+};
+
+export function RecipeImportSpotlight({
+  isPremium,
+  isBlocked,
+  quotaHeadline,
+}: RecipeImportSpotlightProps) {
   return (
     <section className="rounded-2xl border border-primary/15 bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -27,14 +38,35 @@ export function RecipeImportSpotlight() {
             <span className="rounded-full bg-muted px-2.5 py-1 ring-1 ring-border">
               Ajout direct
             </span>
+            <span className="rounded-full bg-muted px-2.5 py-1 ring-1 ring-border">
+              {isPremium ? "Premium" : "Free"}
+            </span>
           </div>
+          <p className="text-sm text-muted-foreground">{quotaHeadline}</p>
+          {isBlocked && !isPremium ? (
+            <p className="text-sm text-muted-foreground">
+              Le quota gratuit est atteint. Passe au Premium pour profiter de plus
+              d&apos;imports IA.
+            </p>
+          ) : null}
         </div>
 
-        <ImportRecipeDialog
-          buttonLabel="Importer un lien"
-          buttonVariant="default"
-          buttonClassName="shrink-0 shadow-sm"
-        />
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <ImportRecipeDialog
+            buttonLabel="Importer un lien"
+            buttonVariant="default"
+            buttonClassName="shrink-0 shadow-sm"
+            disabled={isBlocked}
+          />
+          {isBlocked ? (
+            <Link
+              href="/profile/billing"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Voir l&apos;abonnement Premium
+            </Link>
+          ) : null}
+        </div>
       </div>
     </section>
   );

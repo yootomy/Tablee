@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { getAiQuotaHeadline, resolveFamilyEntitlements } from "@/lib/family-billing";
 import { RecipesSearchInput } from "@/components/forms/recipes-search-input";
 import { RecipeImportSpotlight } from "@/components/recipes/recipe-import-spotlight";
 import { RecipesListView } from "@/components/recipes/recipes-list-view";
@@ -21,16 +22,24 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
     : resolvedSearchParams.q;
   const trimmedQuery = query?.trim() ?? "";
 
-  const recipes = await prisma.recipes.findMany({
-    where: {
-      family_id: familyId,
-      archived_at: null,
-      ...(trimmedQuery
-        ? { title: { contains: trimmedQuery, mode: "insensitive" } }
-        : {}),
-    },
-    orderBy: [{ created_at: "desc" }],
-  });
+  const [recipes, entitlements] = await Promise.all([
+    prisma.recipes.findMany({
+      where: {
+        family_id: familyId,
+        archived_at: null,
+        ...(trimmedQuery
+          ? { title: { contains: trimmedQuery, mode: "insensitive" } }
+          : {}),
+      },
+      orderBy: [{ created_at: "desc" }],
+    }),
+    resolveFamilyEntitlements(familyId),
+  ]);
+  const isPremium = entitlements.plan === "premium";
+  const isBlocked = isPremium
+    ? (entitlements.aiUsage.familyRolling24hRemaining ?? 0) <= 0 ||
+      entitlements.aiUsage.familyRolling30DayRemaining <= 0
+    : entitlements.aiUsage.familyRolling30DayRemaining <= 0;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -49,7 +58,11 @@ export default async function RecipesPage({ searchParams }: RecipesPageProps) {
         <RecipesSearchInput initialValue={trimmedQuery} />
       </AppPageHeader>
 
-      <RecipeImportSpotlight />
+      <RecipeImportSpotlight
+        isPremium={isPremium}
+        isBlocked={isBlocked}
+        quotaHeadline={getAiQuotaHeadline(entitlements)}
+      />
 
       {/* Contenu */}
       {recipes.length === 0 ? (

@@ -1,12 +1,14 @@
 "use server";
 
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { resolveFamilyEntitlements } from "@/lib/family-billing";
 import {
   getImportProvider,
   importRecipeFromSocialUrl,
 } from "@/lib/recipe-import";
 import {
   createRecipeImportJob,
+  getRecentRecipeImportJobsForFamily,
   markRecipeImportJobCompleted,
   markRecipeImportJobFailed,
 } from "@/lib/recipe-import-jobs";
@@ -20,17 +22,11 @@ type ImportRecipeResult =
   | { success: true; recipeId: string }
   | { success: false; error: string };
 
-export async function importRecipeFromUrl(
-  formData: FormData,
-): Promise<ImportRecipeResult> {
-  const { familyId, profileId } = await requireActiveFamily();
-
-  const url = formData.get("url");
-
-  if (typeof url !== "string" || !url.trim()) {
-    return { success: false, error: "Ajoute un lien TikTok ou Instagram." };
-  }
-
+async function executeRecipeImport(input: {
+  familyId: string;
+  profileId: string;
+  url: string;
+}): Promise<ImportRecipeResult> {
   const provider = getImportProvider();
   let importJobState:
     | Awaited<ReturnType<typeof createRecipeImportJob>>
@@ -38,20 +34,20 @@ export async function importRecipeFromUrl(
 
   try {
     importJobState = await createRecipeImportJob({
-      familyId,
-      profileId,
+      familyId: input.familyId,
+      profileId: input.profileId,
       provider,
-      sourceUrl: url.trim(),
+      sourceUrl: input.url.trim(),
     });
 
     if (importJobState.reusedRecipeId) {
       return { success: true, recipeId: importJobState.reusedRecipeId };
     }
 
-    const draft = await importRecipeFromSocialUrl(url.trim());
+    const draft = await importRecipeFromSocialUrl(input.url.trim());
     const recipe = await createRecipeRecord({
-      familyId,
-      profileId,
+      familyId: input.familyId,
+      profileId: input.profileId,
       data: draftToPayload(draft),
     });
 
@@ -86,6 +82,60 @@ export async function importRecipeFromUrl(
 
     return { success: false, error: message };
   }
+}
+
+export async function importRecipeFromUrl(
+  formData: FormData,
+): Promise<ImportRecipeResult> {
+  const { familyId, profileId } = await requireActiveFamily();
+  const url = formData.get("url");
+
+  if (typeof url !== "string" || !url.trim()) {
+    return { success: false, error: "Ajoute un lien TikTok ou Instagram." };
+  }
+
+  return executeRecipeImport({
+    familyId,
+    profileId,
+    url: url.trim(),
+  });
+}
+
+export async function retryRecipeImport(
+  formData: FormData,
+): Promise<ImportRecipeResult> {
+  const { familyId, profileId } = await requireActiveFamily();
+  const entitlements = await resolveFamilyEntitlements(familyId);
+
+  if (!entitlements.features.retryImport) {
+    return {
+      success: false,
+      error: "La relance d'import est réservée aux familles Premium.",
+    };
+  }
+
+  const jobId = formData.get("jobId");
+
+  if (typeof jobId !== "string" || !jobId.trim()) {
+    return { success: false, error: "Import introuvable." };
+  }
+
+  const recentJobs = await getRecentRecipeImportJobsForFamily(familyId, 50);
+  const job = recentJobs.find((candidate) => candidate.id === jobId);
+
+  if (!job) {
+    return { success: false, error: "Import introuvable pour cette famille." };
+  }
+
+  if (!job.source_url) {
+    return { success: false, error: "Impossible de relancer cet import." };
+  }
+
+  return executeRecipeImport({
+    familyId,
+    profileId,
+    url: job.source_url,
+  });
 }
 
 function draftToPayload(draft: Awaited<ReturnType<typeof importRecipeFromSocialUrl>>): RecipePersistencePayload {

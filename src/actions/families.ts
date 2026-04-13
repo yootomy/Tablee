@@ -18,6 +18,7 @@ import {
   hashInviteCode,
   normalizeInviteCode,
 } from "@/lib/family-invites";
+import { syncFamilySubscriptionTierForMemberCount } from "@/lib/stripe";
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -268,6 +269,12 @@ export async function joinFamilyWithCode(
       },
     });
   });
+
+  try {
+    await syncFamilySubscriptionTierForMemberCount(invite.family_id);
+  } catch (error) {
+    console.error("Failed to sync billing tier after family join", error);
+  }
 
   redirect("/dashboard");
 }
@@ -549,6 +556,12 @@ export async function removeFamilyMember(
       },
     });
   });
+
+  try {
+    await syncFamilySubscriptionTierForMemberCount(familyId);
+  } catch (error) {
+    console.error("Failed to sync billing tier after member removal", error);
+  }
 
   revalidatePath("/profile");
   revalidatePath("/dashboard");
