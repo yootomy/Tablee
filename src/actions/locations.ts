@@ -20,6 +20,10 @@ const setPreferredLocationSchema = z.object({
   locationId: z.string().uuid("Le lieu par défaut est introuvable"),
 });
 
+const deleteLocationSchema = z.object({
+  locationId: z.string().uuid("Le lieu est introuvable"),
+});
+
 export async function createLocation(formData: FormData): Promise<ActionResult> {
   const { familyId, profileId } = await requireActiveFamily();
 
@@ -146,6 +150,47 @@ export async function setPreferredLocation(
       last_selected_location_id: location.id,
     },
   });
+
+  revalidatePath("/profile/locations");
+  revalidatePath("/shopping");
+
+  return { success: true };
+}
+
+export async function deleteLocation(locationId: string): Promise<ActionResult> {
+  const { familyId, profileId } = await requireActiveFamily();
+
+  const parsed = deleteLocationSchema.safeParse({ locationId });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const [activeCount, prefs] = await Promise.all([
+    prisma.locations.count({
+      where: { family_id: familyId, archived_at: null },
+    }),
+    prisma.family_context_preferences.findUnique({
+      where: { profile_id_family_id: { profile_id: profileId, family_id: familyId } },
+      select: { last_selected_location_id: true },
+    }),
+  ]);
+
+  if (activeCount <= 1) {
+    return { success: false, error: "Impossible de supprimer le seul lieu actif" };
+  }
+
+  if (prefs?.last_selected_location_id === parsed.data.locationId) {
+    return { success: false, error: "Impossible de supprimer le lieu par défaut" };
+  }
+
+  const result = await prisma.locations.updateMany({
+    where: { id: parsed.data.locationId, family_id: familyId, archived_at: null },
+    data: { archived_at: new Date() },
+  });
+
+  if (result.count === 0) {
+    return { success: false, error: "Le lieu demandé est introuvable" };
+  }
 
   revalidatePath("/profile/locations");
   revalidatePath("/shopping");

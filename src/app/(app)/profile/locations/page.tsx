@@ -5,6 +5,7 @@ import { getPreferredLocationId } from "@/lib/location-preferences";
 import { CreateLocationForm } from "@/components/forms/create-location-form";
 import { EditLocationForm } from "@/components/forms/edit-location-form";
 import { SetDefaultLocationButton } from "@/components/forms/set-default-location-button";
+import { DeleteLocationButton } from "@/components/forms/delete-location-button";
 import { ProfileSectionNav } from "@/components/layout/profile-section-nav";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -131,6 +132,12 @@ export default async function FamilyLocationsPage() {
                             locationId={location.id}
                             initialName={location.name}
                           />
+                          {!isDefault && locations.length > 1 ? (
+                            <DeleteLocationButton
+                              locationId={location.id}
+                              locationName={location.name}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     </div>
