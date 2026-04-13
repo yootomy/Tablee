@@ -21,7 +21,7 @@ function formatMoney(value: number | null) {
     return "Gratuit";
   }
 
-  return `${value.toFixed(2).replace(".", ",")} €/mois`;
+  return `${value.toFixed(2).replace(".", ",")} CHF/mois`;
 }
 
 function formatDate(value: string | null) {
@@ -322,10 +322,10 @@ export default async function BillingPage() {
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
               <p className="text-sm text-muted-foreground">
-                Premium Famille (1 à 4 membres) – 6,99 €/mois
+                Premium Famille (1 à 4 membres) – 6,99 CHF/mois
               </p>
               <p className="text-sm text-muted-foreground">
-                Premium Famille (5+ membres) – 8,99 €/mois
+                Premium Famille (5+ membres) – 8,99 CHF/mois
               </p>
               <p className="text-sm text-muted-foreground">
                 Le palier suit automatiquement la taille de la famille au prochain renouvellement.
