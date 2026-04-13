@@ -58,6 +58,12 @@ const IMAGE_EXTENSIONS = new Set([
   ".gif",
 ]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".mkv", ".webm", ".m4v"]);
+const TIKTOK_SHORT_HOSTNAMES = new Set(["vm.tiktok.com", "vt.tiktok.com"]);
+const SOCIAL_FETCH_HEADERS = {
+  "user-agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+  "accept-language": "fr-FR,fr;q=0.9,en;q=0.8",
+} as const;
 
 const recipeImportResponseSchema = z.object({
   title: z.string().trim().min(2),
@@ -116,6 +122,11 @@ type DownloadedSocialMedia =
       kind: "image-gallery";
       imagePaths: string[];
     };
+
+type TikTokPhotoEmbedPayload = {
+  metadata: SocialVideoMetadata;
+  imageUrls: string[];
+};
 
 const geminiRecipeJsonSchema = {
   type: "object",
@@ -241,6 +252,54 @@ function isSupportedSocialUrl(value: string) {
 function detectPlatform(value: string): SocialPlatform {
   const hostname = new URL(value).hostname.toLowerCase();
   return hostname.includes("instagram") ? "instagram" : "tiktok";
+}
+
+function isTikTokShortUrl(value: string) {
+  try {
+    return TIKTOK_SHORT_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+function isTikTokPhotoUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname.toLowerCase().includes("tiktok.com") &&
+      /\/photo\/\d+/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractTikTokPostId(value: string) {
+  try {
+    const pathname = new URL(value).pathname;
+    return pathname.match(/\/(?:video|photo)\/(\d+)/)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTikTokCanonicalUrl(url: URL) {
+  url.hash = "";
+  url.searchParams.delete("_r");
+  url.searchParams.delete("_t");
+  url.searchParams.delete("is_copy_url");
+  url.searchParams.delete("is_from_webapp");
+  return url.toString();
+}
+
+function truncateSocialText(value: string, maxLength = 72) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 export function getImportProvider(): ImportProvider {
@@ -386,6 +445,7 @@ async function downloadAndStoreImage(url: string) {
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), DOWNLOAD_TIMEOUT_MS);
   const response = await fetch(url, {
+    headers: SOCIAL_FETCH_HEADERS,
     signal: abortController.signal,
   }).finally(() => clearTimeout(timeout));
 
@@ -399,6 +459,41 @@ async function downloadAndStoreImage(url: string) {
     extensionFromUrl(url);
 
   return storeImageBuffer(buffer, extension);
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = DOWNLOAD_TIMEOUT_MS) {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      headers: {
+        ...SOCIAL_FETCH_HEADERS,
+        ...(init.headers || {}),
+      },
+      signal: abortController.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveSocialUrl(url: string) {
+  if (!isTikTokShortUrl(url)) {
+    return url;
+  }
+
+  try {
+    const response = await fetchWithTimeout(url, { redirect: "follow" });
+    const resolvedUrl = response.url || url;
+
+    return detectPlatform(resolvedUrl) === "tiktok"
+      ? normalizeTikTokCanonicalUrl(new URL(resolvedUrl))
+      : resolvedUrl;
+  } catch {
+    return url;
+  }
 }
 
 async function runCommand(
@@ -584,6 +679,163 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
   return metadata;
 }
 
+function asStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
+}
+
+function extractTikTokHashtags(textExtras: unknown) {
+  if (!Array.isArray(textExtras)) {
+    return [];
+  }
+
+  return textExtras
+    .flatMap((entry) => {
+      if (typeof entry !== "object" || entry === null) {
+        return [];
+      }
+
+      const candidates = [
+        "hashtagName" in entry && typeof entry.hashtagName === "string"
+          ? entry.hashtagName
+          : null,
+        "hashtag_name" in entry && typeof entry.hashtag_name === "string"
+          ? entry.hashtag_name
+          : null,
+      ].filter((candidate): candidate is string => Boolean(candidate));
+
+      return candidates;
+    })
+    .map((tag) => tag.replace(/^#/, "").trim())
+    .filter(Boolean);
+}
+
+function getFirstUrlFromCandidates(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return asStringArray(value)[0] ?? "";
+}
+
+export function extractTikTokPhotoPayloadFromEmbedHtml(
+  html: string,
+  sourceUrl: string,
+): TikTokPhotoEmbedPayload {
+  const scriptStart = html.indexOf('<script id="__FRONTITY_CONNECT_STATE__"');
+
+  if (scriptStart < 0) {
+    throw new Error("TikTok n'a pas fourni l'état embed attendu pour ce post photo.");
+  }
+
+  const openTagEnd = html.indexOf(">", scriptStart);
+  const scriptEnd = html.indexOf("</script>", openTagEnd);
+
+  if (openTagEnd < 0 || scriptEnd < 0) {
+    throw new Error("TikTok a renvoyé un embed incomplet pour ce post photo.");
+  }
+
+  const rawState = html.slice(openTagEnd + 1, scriptEnd);
+  const state = JSON.parse(rawState) as {
+    source?: {
+      data?: Record<string, { videoData?: Record<string, unknown> }>;
+    };
+  };
+  const postId = extractTikTokPostId(sourceUrl);
+
+  if (!postId) {
+    throw new Error("Impossible d'identifier ce post TikTok photo.");
+  }
+
+  const videoData =
+    state.source?.data?.[`/embed/${postId}`]?.videoData ??
+    Object.values(state.source?.data ?? {}).find((entry) => entry.videoData)?.videoData;
+
+  if (!videoData || typeof videoData !== "object") {
+    throw new Error("TikTok n'a renvoyé aucune donnée exploitable pour ce post photo.");
+  }
+
+  const itemInfos =
+    "itemInfos" in videoData && typeof videoData.itemInfos === "object" && videoData.itemInfos
+      ? (videoData.itemInfos as Record<string, unknown>)
+      : {};
+  const authorInfos =
+    "authorInfos" in videoData && typeof videoData.authorInfos === "object" && videoData.authorInfos
+      ? (videoData.authorInfos as Record<string, unknown>)
+      : {};
+  const imagePostInfo =
+    "imagePostInfo" in videoData && typeof videoData.imagePostInfo === "object" && videoData.imagePostInfo
+      ? (videoData.imagePostInfo as Record<string, unknown>)
+      : {};
+  const description =
+    ("text" in itemInfos && typeof itemInfos.text === "string" ? itemInfos.text : "").trim();
+  const uniqueId =
+    ("uniqueId" in authorInfos && typeof authorInfos.uniqueId === "string"
+      ? authorInfos.uniqueId
+      : "").trim();
+  const creatorName =
+    ("nickName" in authorInfos && typeof authorInfos.nickName === "string"
+      ? authorInfos.nickName
+      : uniqueId).trim();
+  const coverUrl =
+    getFirstUrlFromCandidates("coversOrigin" in itemInfos ? itemInfos.coversOrigin : null) ||
+    getFirstUrlFromCandidates("covers" in itemInfos ? itemInfos.covers : null);
+  const displayImages =
+    "displayImages" in imagePostInfo && Array.isArray(imagePostInfo.displayImages)
+      ? imagePostInfo.displayImages
+      : [];
+  const imageUrls = displayImages
+    .map((image) => {
+      if (typeof image !== "object" || image === null) {
+        return "";
+      }
+
+      return getFirstUrlFromCandidates(
+        "urlList" in image ? (image as Record<string, unknown>).urlList : null,
+      );
+    })
+    .filter(Boolean)
+    .slice(0, MAX_GALLERY_IMAGES);
+
+  if (imageUrls.length === 0) {
+    throw new Error("Le diaporama TikTok n'a pas fourni d'images exploitables.");
+  }
+
+  return {
+    metadata: {
+      platform: "tiktok",
+      title: truncateSocialText(description || "Recette importée TikTok"),
+      description,
+      creatorName,
+      webpageUrl: uniqueId
+        ? `https://www.tiktok.com/@${uniqueId}/photo/${postId}`
+        : sourceUrl,
+      thumbnailUrl: coverUrl || imageUrls[0],
+      durationSeconds: null,
+      tags: extractTikTokHashtags(
+        "textExtra" in videoData ? (videoData as Record<string, unknown>).textExtra : null,
+      ),
+    },
+    imageUrls,
+  };
+}
+
+async function getTikTokPhotoEmbedPayload(url: string) {
+  const postId = extractTikTokPostId(url);
+
+  if (!postId) {
+    throw new Error("Ce lien TikTok photo est incomplet.");
+  }
+
+  const embedUrl = `https://www.tiktok.com/embed/${postId}`;
+  const response = await fetchWithTimeout(embedUrl);
+
+  if (!response.ok) {
+    throw new Error("TikTok a refusé l'accès à l'embed de ce post photo.");
+  }
+
+  return extractTikTokPhotoPayloadFromEmbedHtml(await response.text(), url);
+}
+
 async function clearDownloadedSourceArtifacts(cwd: string) {
   const entries = await fs.readdir(cwd);
 
@@ -629,6 +881,41 @@ async function detectDownloadedSourceMedia(
   }
 
   return null;
+}
+
+async function downloadImageGallery(imageUrls: string[], cwd: string) {
+  await clearDownloadedSourceArtifacts(cwd);
+
+  const limitedUrls = imageUrls.slice(0, MAX_GALLERY_IMAGES);
+
+  await Promise.all(
+    limitedUrls.map(async (imageUrl, index) => {
+      const response = await fetchWithTimeout(imageUrl, {}, DOWNLOAD_TIMEOUT_MS);
+
+      if (!response.ok) {
+        throw new Error("Impossible de télécharger une image du diaporama TikTok.");
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const extension =
+        extensionFromContentType(response.headers.get("content-type")) ||
+        extensionFromUrl(imageUrl);
+      const destination = path.join(
+        cwd,
+        `source-${String(index + 1).padStart(2, "0")}${extension}`,
+      );
+
+      await fs.writeFile(destination, buffer);
+    }),
+  );
+
+  const media = await detectDownloadedSourceMedia(cwd);
+
+  if (!media || media.kind !== "image-gallery") {
+    throw new Error("Le diaporama TikTok a été détecté, mais ses images n'ont pas pu être préparées.");
+  }
+
+  return media;
 }
 
 async function downloadSourceMedia(url: string, cwd: string) {
@@ -1218,9 +1505,17 @@ export async function importRecipeFromSocialUrl(url: string) {
   const tempDir = await fs.mkdtemp(path.join(tmpdir(), "tablee-import-"));
 
   try {
+    const resolvedUrl = await resolveSocialUrl(url);
     const provider = getImportProvider();
-    const metadata = await getSocialMetadata(url, tempDir);
-    const sourceMedia = await downloadSourceMedia(url, tempDir);
+    const photoPayload = isTikTokPhotoUrl(resolvedUrl)
+      ? await getTikTokPhotoEmbedPayload(resolvedUrl)
+      : null;
+    const metadata = photoPayload
+      ? photoPayload.metadata
+      : await getSocialMetadata(resolvedUrl, tempDir);
+    const sourceMedia = photoPayload
+      ? await downloadImageGallery(photoPayload.imageUrls, tempDir)
+      : await downloadSourceMedia(resolvedUrl, tempDir);
     const providersToTry = getProviderExecutionOrder(provider);
     let analysis: z.infer<typeof recipeImportResponseSchema> | null = null;
     let lastAnalysisError: unknown = null;
@@ -1304,7 +1599,7 @@ export async function importRecipeFromSocialUrl(url: string) {
     }
 
     return normalizeImportedRecipe({
-      sourceUrl: url,
+      sourceUrl: resolvedUrl,
       imageUrl,
       metadata,
       analysis,
