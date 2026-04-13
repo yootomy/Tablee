@@ -5,6 +5,7 @@ import { addManualShoppingItem } from "@/actions/shopping";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface ManualShoppingItemFormProps {
   locationId: string;
@@ -32,6 +33,7 @@ export function ManualShoppingItemForm({
     }
 
     formRef.current?.reset();
+    toast.success("Article ajouté");
     setLoading(false);
     onSuccess?.();
   }

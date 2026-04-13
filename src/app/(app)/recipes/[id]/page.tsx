@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getPreferredLocationId } from "@/lib/location-preferences";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { formatDuration, formatQuantity } from "@/lib/formatters";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
@@ -23,24 +24,6 @@ import {
 type RecipeDetailPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function formatDuration(minutes: number | null) {
-  if (!minutes) return null;
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  return rem ? `${hours}h${rem}` : `${hours}h`;
-}
-
-function formatIngredientQuantity(ingredient: {
-  quantity_numeric: { toString(): string } | null;
-  raw_quantity_text: string | null;
-  unit: string | null;
-}) {
-  if (ingredient.raw_quantity_text) return ingredient.raw_quantity_text;
-  if (!ingredient.quantity_numeric) return null;
-  return `${ingredient.quantity_numeric.toString()}${ingredient.unit ? ` ${ingredient.unit}` : ""}`;
-}
 
 export default async function RecipeDetailPage({
   params,
@@ -182,7 +165,7 @@ export default async function RecipeDetailPage({
             <CardContent className="pt-0">
               <ul className="divide-y">
                 {recipe.recipe_ingredients.map((ingredient) => {
-                  const qty = formatIngredientQuantity(ingredient);
+                  const qty = formatQuantity(ingredient);
                   return (
                     <li
                       key={ingredient.id}

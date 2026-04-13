@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import {
   LEGACY_RECIPE_MEDIA_STORAGE_DIR,
   RECIPE_MEDIA_STORAGE_DIR,
@@ -45,6 +46,11 @@ async function findRecipeMediaFile(filename: string) {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   const { filename } = await context.params;
   const filePath = await findRecipeMediaFile(filename);
 

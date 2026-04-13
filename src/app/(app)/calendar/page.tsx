@@ -13,6 +13,7 @@ import { AppPageHeader } from "@/components/layout/app-page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
+import { MapPin } from "lucide-react";
 
 type CalendarPageProps = {
   searchParams: Promise<{
@@ -103,6 +104,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           description="Ajoute un lieu de référence pour commencer à organiser la semaine de la famille."
         />
         <EmptyState
+          icon={<MapPin className="size-10 text-muted-foreground/40" />}
           title="Aucun lieu disponible"
           description="Ajoute d'abord un lieu dans la famille pour pouvoir planifier des repas."
           action={

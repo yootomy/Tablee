@@ -15,16 +15,7 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
-
-function formatShoppingQuantity(item: {
-  quantity_numeric: { toString(): string } | null;
-  raw_quantity_text: string | null;
-  unit: string | null;
-}) {
-  if (item.raw_quantity_text) return item.raw_quantity_text;
-  if (!item.quantity_numeric) return null;
-  return `${item.quantity_numeric.toString()}${item.unit ? ` ${item.unit}` : ""}`;
-}
+import { formatQuantity } from "@/lib/formatters";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -268,7 +259,7 @@ export default async function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {pendingShoppingItems.map((item) => {
-                    const qty = formatShoppingQuantity(item);
+                    const qty = formatQuantity(item);
                     return (
                       <div
                         key={item.id}

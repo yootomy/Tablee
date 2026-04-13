@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Clock, Users, Plus, LayoutGrid, List, ChefHat } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { formatDuration } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
 type RecipeItem = {
@@ -20,14 +21,6 @@ type RecipeItem = {
 
 interface RecipesListViewProps {
   recipes: RecipeItem[];
-}
-
-function formatMinutes(minutes: number | null) {
-  if (!minutes) return null;
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  return rem ? `${hours}h${rem}` : `${hours}h`;
 }
 
 const VIEW_KEY = "tablee-recipes-view";
@@ -117,7 +110,7 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
         const imageUrl = resolveMediaUrl(recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
-            ? formatMinutes(
+            ? formatDuration(
                 (recipe.prep_time_minutes ?? 0) +
                   (recipe.cook_time_minutes ?? 0),
               )
@@ -181,7 +174,7 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
         const imageUrl = resolveMediaUrl(recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
-            ? formatMinutes(
+            ? formatDuration(
                 (recipe.prep_time_minutes ?? 0) +
                   (recipe.cook_time_minutes ?? 0),
               )

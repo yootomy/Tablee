@@ -5,6 +5,7 @@ import { useOptimistic, useTransition } from "react";
 import { toggleShoppingItem } from "@/actions/shopping";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ShoppingItemToggleProps {
   itemId: string;
@@ -30,6 +31,7 @@ export function ShoppingItemToggle({
       formData.set("nextCompleted", nextCompleted ? "true" : "false");
 
       await toggleShoppingItem(formData);
+      toast.success(nextCompleted ? "Article complété" : "Article remis dans la liste");
       router.refresh();
     });
   }

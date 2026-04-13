@@ -11,6 +11,7 @@ import { ShoppingItemToggle } from "@/components/forms/shopping-item-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart } from "lucide-react";
+import { formatQuantity } from "@/lib/formatters";
 
 type ShoppingPageProps = {
   searchParams: Promise<{ locationId?: string | string[] }>;
@@ -22,16 +23,6 @@ function getSevenDaysAgo() {
 
 function getDaysRemaining(completedAt: Date) {
   return Math.max(0, 7 - Math.floor((Date.now() - completedAt.getTime()) / (24 * 60 * 60 * 1000)));
-}
-
-function formatShoppingQuantity(item: {
-  quantity_numeric: { toString(): string } | null;
-  raw_quantity_text: string | null;
-  unit: string | null;
-}) {
-  if (item.raw_quantity_text) return item.raw_quantity_text;
-  if (!item.quantity_numeric) return null;
-  return `${item.quantity_numeric.toString()}${item.unit ? ` ${item.unit}` : ""}`;
 }
 
 export default async function ShoppingPage({ searchParams }: ShoppingPageProps) {
@@ -187,7 +178,7 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
           ) : (
             <div className="space-y-3">
               {pendingItems.map((item) => {
-                const quantity = formatShoppingQuantity(item);
+                const quantity = formatQuantity(item);
 
                 return (
                   <div
@@ -245,7 +236,7 @@ export default async function ShoppingPage({ searchParams }: ShoppingPageProps) 
               </summary>
               <div className="mt-3 space-y-3">
                 {completedItems.map((item) => {
-                  const quantity = formatShoppingQuantity(item);
+                  const quantity = formatQuantity(item);
                   const completedBy =
                     item.family_members_shopping_items_family_id_completed_by_profile_idTofamily_members
                       ?.profiles_family_members_profile_idToprofiles.display_name;
