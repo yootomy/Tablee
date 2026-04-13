@@ -4,43 +4,36 @@ const globalForSchema = globalThis as typeof globalThis & {
   tableeEnsureOperationalSchema?: Promise<void>;
 };
 
+function isIgnorableSchemaError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return (
+    message.includes("Code: `42501`") ||
+    /must be owner of table/i.test(message) ||
+    /permission denied/i.test(message)
+  );
+}
+
+async function executeOptionalSchemaQuery(query: string) {
+  try {
+    await prisma.$executeRawUnsafe(query);
+  } catch (error) {
+    if (isIgnorableSchemaError(error)) {
+      console.warn(
+        "[schema] Skipping optional runtime compatibility query due to insufficient privileges.",
+      );
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function ensureOperationalSchemaInternal() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS oauth_accounts (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-      provider text NOT NULL,
-      provider_account_id text NOT NULL,
-      created_at timestamptz NOT NULL DEFAULT now()
-    );
-  `);
+  // Keep runtime schema compatibility limited to support tables owned by the app.
+  // Core auth/data tables should be migrated explicitly through SQL/Prisma migrations.
 
-  await prisma.$executeRawUnsafe(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_accounts_provider_account
-      ON oauth_accounts(provider, provider_account_id);
-  `);
-
-  await prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'profiles'
-          AND column_name = 'password_hash'
-          AND is_nullable = 'NO'
-      ) THEN
-        ALTER TABLE profiles ALTER COLUMN password_hash DROP NOT NULL;
-      END IF;
-    END $$;
-  `);
-
-  await prisma.$executeRawUnsafe(`
-    ALTER TABLE recipes
-      ADD COLUMN IF NOT EXISTS image_url text NULL;
-  `);
-
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE TABLE IF NOT EXISTS request_rate_limits (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       scope text NOT NULL,
@@ -53,17 +46,17 @@ async function ensureOperationalSchemaInternal() {
     );
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_request_rate_limits_scope_identifier_window
       ON request_rate_limits(scope, identifier, window_start);
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE INDEX IF NOT EXISTS idx_request_rate_limits_scope_identifier_last_hit
       ON request_rate_limits(scope, identifier, last_hit_at DESC);
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE TABLE IF NOT EXISTS recipe_import_jobs (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -82,17 +75,17 @@ async function ensureOperationalSchemaInternal() {
     );
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE INDEX IF NOT EXISTS idx_recipe_import_jobs_family_status_created
       ON recipe_import_jobs(family_id, status, created_at DESC);
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE INDEX IF NOT EXISTS idx_recipe_import_jobs_profile_created
       ON recipe_import_jobs(requested_by_profile_id, created_at DESC);
   `);
 
-  await prisma.$executeRawUnsafe(`
+  await executeOptionalSchemaQuery(`
     CREATE INDEX IF NOT EXISTS idx_recipe_import_jobs_source_hash
       ON recipe_import_jobs(family_id, source_url_hash, created_at DESC);
   `);
