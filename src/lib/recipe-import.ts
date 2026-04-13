@@ -47,7 +47,17 @@ const MAX_VIDEO_DURATION_SECONDS = Number(
 const MAX_VIDEO_FILE_SIZE_BYTES =
   Number(process.env.AI_RECIPE_IMPORT_MAX_FILE_SIZE_MB ?? 120) * 1024 * 1024;
 const MAX_FRAMES = 6;
+const MAX_GALLERY_IMAGES = 10;
 const FRAME_INTERVAL_SECONDS = 6;
+const IMAGE_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".bmp",
+  ".gif",
+]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".mkv", ".webm", ".m4v"]);
 
 const recipeImportResponseSchema = z.object({
   title: z.string().trim().min(2),
@@ -89,6 +99,23 @@ type SocialVideoMetadata = {
   durationSeconds: number | null;
   tags: string[];
 };
+
+type VisualInput = {
+  filePath: string;
+  dataUrl: string;
+  mimeType: string;
+  base64: string;
+};
+
+type DownloadedSocialMedia =
+  | {
+      kind: "video";
+      videoPath: string;
+    }
+  | {
+      kind: "image-gallery";
+      imagePaths: string[];
+    };
 
 const geminiRecipeJsonSchema = {
   type: "object",
@@ -258,6 +285,17 @@ function getVideoMimeType(videoPath: string) {
   return "video/mp4";
 }
 
+function getImageMimeType(imagePath: string) {
+  const extension = path.extname(imagePath).toLowerCase();
+
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".bmp") return "image/bmp";
+
+  return "image/jpeg";
+}
+
 function dataUrlForImage(buffer: Buffer, extension: string) {
   const normalized = extension.replace(".", "").toLowerCase();
   const mimeType =
@@ -298,6 +336,36 @@ async function pathExists(targetPath: string) {
   } catch {
     return false;
   }
+}
+
+function isImagePath(targetPath: string) {
+  return IMAGE_EXTENSIONS.has(path.extname(targetPath).toLowerCase());
+}
+
+function isVideoPath(targetPath: string) {
+  return VIDEO_EXTENSIONS.has(path.extname(targetPath).toLowerCase());
+}
+
+async function createVisualInputFromFile(filePath: string): Promise<VisualInput> {
+  const buffer = await fs.readFile(filePath);
+  const extension = path.extname(filePath);
+  const mimeType = getImageMimeType(filePath);
+  const base64 = buffer.toString("base64");
+
+  return {
+    filePath,
+    dataUrl: dataUrlForImage(buffer, extension),
+    mimeType,
+    base64,
+  };
+}
+
+async function loadVisualInputsFromImagePaths(imagePaths: string[]) {
+  return Promise.all(
+    imagePaths.slice(0, MAX_GALLERY_IMAGES).map((imagePath) =>
+      createVisualInputFromFile(imagePath),
+    ),
+  );
 }
 
 async function storeImageBuffer(buffer: Buffer, extension: string) {
@@ -510,49 +578,95 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
   return metadata;
 }
 
-async function downloadSourceVideo(url: string, cwd: string) {
-  const template = path.join(cwd, "source.%(ext)s");
-  const ytDlpBin = await resolveBinaryPath("yt-dlp");
-
-  try {
-    await runCommand(
-      ytDlpBin,
-      [
-        "--no-playlist",
-        "--merge-output-format",
-        "mp4",
-        "-f",
-        "mp4/bestvideo*+bestaudio/best",
-        "-o",
-        template,
-        url,
-      ],
-      cwd,
-      DOWNLOAD_TIMEOUT_MS,
-    );
-  } catch (error) {
-    throw new Error(formatCommandError(error, "yt-dlp"));
-  }
-
+async function clearDownloadedSourceArtifacts(cwd: string) {
   const entries = await fs.readdir(cwd);
-  const candidate = entries.find((entry) => entry.startsWith("source."));
 
-  if (!candidate) {
-    throw new Error("La vidéo source n'a pas pu être téléchargée.");
+  await Promise.all(
+    entries
+      .filter((entry) => entry.startsWith("source"))
+      .map((entry) =>
+        fs.rm(path.join(cwd, entry), { recursive: true, force: true }),
+      ),
+  );
+}
+
+async function detectDownloadedSourceMedia(
+  cwd: string,
+): Promise<DownloadedSocialMedia | null> {
+  const entries = (await fs.readdir(cwd))
+    .filter((entry) => entry.startsWith("source"))
+    .map((entry) => path.join(cwd, entry));
+
+  const videoPath = entries.find((entry) => isVideoPath(entry));
+
+  if (videoPath) {
+    const fileStat = await fs.stat(videoPath);
+
+    if (fileStat.size > MAX_VIDEO_FILE_SIZE_BYTES) {
+      throw new Error(
+        `La vidéo dépasse ${Math.round(
+          MAX_VIDEO_FILE_SIZE_BYTES / (1024 * 1024),
+        )} MB, ce qui est trop lourd pour un import IA.`,
+      );
+    }
+
+    return { kind: "video", videoPath };
   }
 
-  const videoPath = path.join(cwd, candidate);
-  const fileStat = await fs.stat(videoPath);
+  const imagePaths = entries.filter((entry) => isImagePath(entry)).sort();
 
-  if (fileStat.size > MAX_VIDEO_FILE_SIZE_BYTES) {
-    throw new Error(
-      `La vidéo dépasse ${Math.round(
-        MAX_VIDEO_FILE_SIZE_BYTES / (1024 * 1024),
-      )} MB, ce qui est trop lourd pour un import IA.`,
-    );
+  if (imagePaths.length > 0) {
+    return {
+      kind: "image-gallery",
+      imagePaths: imagePaths.slice(0, MAX_GALLERY_IMAGES),
+    };
   }
 
-  return videoPath;
+  return null;
+}
+
+async function downloadSourceMedia(url: string, cwd: string) {
+  const ytDlpBin = await resolveBinaryPath("yt-dlp");
+  const attempts = [
+    [
+      "--no-playlist",
+      "--merge-output-format",
+      "mp4",
+      "-f",
+      "mp4/bestvideo*+bestaudio/best",
+      "-o",
+      path.join(cwd, "source.%(ext)s"),
+      url,
+    ],
+    [
+      "--no-playlist",
+      "-o",
+      path.join(cwd, "source-%(autonumber)s.%(ext)s"),
+      url,
+    ],
+  ];
+  let lastError: unknown;
+
+  for (const args of attempts) {
+    await clearDownloadedSourceArtifacts(cwd);
+
+    try {
+      await runCommand(ytDlpBin, args, cwd, DOWNLOAD_TIMEOUT_MS);
+      const media = await detectDownloadedSourceMedia(cwd);
+
+      if (media) {
+        return media;
+      }
+
+      lastError = new Error(
+        "Le média source a bien été téléchargé, mais aucun fichier exploitable n'a été trouvé.",
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(formatCommandError(lastError, "yt-dlp"));
 }
 
 async function extractFrames(videoPath: string, cwd: string) {
@@ -584,14 +698,7 @@ async function extractFrames(videoPath: string, cwd: string) {
     .sort();
 
   return Promise.all(
-    files.map(async (file) => {
-      const filePath = path.join(cwd, file);
-      const buffer = await fs.readFile(filePath);
-      return {
-        filePath,
-        dataUrl: dataUrlForImage(buffer, ".jpg"),
-      };
-    }),
+    files.map((file) => createVisualInputFromFile(path.join(cwd, file))),
   );
 }
 
@@ -757,6 +864,23 @@ function isRetryableGeminiError(error: unknown) {
   );
 }
 
+function buildGeminiRecipeImportPrompt(input: {
+  metadata: SocialVideoMetadata;
+  sourceKind: "video" | "image-gallery";
+}) {
+  return [
+    input.sourceKind === "video"
+      ? "Tu analyses une vidéo de recette publiée sur un réseau social."
+      : "Tu analyses un diaporama photo de recette publié sur un réseau social.",
+    "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
+    "Tu dois utiliser tous les signaux disponibles : les images, l'audio si le média en contient, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
+    "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
+    "Ne renvoie que le JSON demandé par le schéma.",
+    "",
+    `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
+  ].join("\n");
+}
+
 async function analyzeRecipeFromVideoWithGemini(input: {
   metadata: SocialVideoMetadata;
   videoPath: string;
@@ -788,15 +912,10 @@ async function analyzeRecipeFromVideoWithGemini(input: {
             model: GEMINI_RECIPE_IMPORT_MODEL,
             contents: createUserContent([
               createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
-              [
-                "Tu analyses une vidéo de recette publiée sur un réseau social.",
-                "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
-                "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
-                "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
-                "Ne renvoie que le JSON demandé par le schéma.",
-                "",
-                `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
-              ].join("\n"),
+              buildGeminiRecipeImportPrompt({
+                metadata: input.metadata,
+                sourceKind: "video",
+              }),
             ]),
             config: {
               responseMimeType: "application/json",
@@ -836,10 +955,61 @@ async function analyzeRecipeFromVideoWithGemini(input: {
   }
 }
 
+async function analyzeRecipeFromImageGalleryWithGemini(input: {
+  metadata: SocialVideoMetadata;
+  visuals: VisualInput[];
+}) {
+  const ai = getGeminiClient();
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= GEMINI_ANALYSIS_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model: GEMINI_RECIPE_IMPORT_MODEL,
+          contents: createUserContent([
+            buildGeminiRecipeImportPrompt({
+              metadata: input.metadata,
+              sourceKind: "image-gallery",
+            }),
+            ...input.visuals.map((visual) => ({
+              inlineData: {
+                mimeType: visual.mimeType,
+                data: visual.base64,
+              },
+            })),
+          ]),
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: geminiRecipeJsonSchema,
+          },
+        }),
+        AI_ANALYSIS_TIMEOUT_MS,
+        "L'analyse Gemini a pris trop de temps.",
+      );
+
+      return recipeImportResponseSchema.parse(JSON.parse(response.text || "{}"));
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === GEMINI_ANALYSIS_MAX_ATTEMPTS || !isRetryableGeminiError(error)) {
+        throw error;
+      }
+
+      await sleep(1200 * attempt);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Gemini n'a pas réussi à analyser le diaporama.");
+}
+
 async function analyzeRecipeFromMediaWithOpenAI(input: {
   metadata: SocialVideoMetadata;
   transcript: string;
-  frames: Array<{ dataUrl: string }>;
+  visuals: VisualInput[];
+  sourceKind: "video" | "image-gallery";
 }) {
   const client = getOpenAIClient();
   const response = await withTimeout(
@@ -853,9 +1023,9 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
             {
               type: "input_text",
               text:
-                "Tu analyses une vidéo de recette publiée sur un réseau social. " +
+                `Tu analyses un ${input.sourceKind === "video" ? "média vidéo" : "diaporama photo"} de recette publié sur un réseau social. ` +
                 "Ta mission est de reconstituer un brouillon de recette exploitable par un humain. " +
-                "Tu dois utiliser tous les signaux disponibles: métadonnées sociales, description, transcription audio, et texte visible dans les frames. " +
+                "Tu dois utiliser tous les signaux disponibles: métadonnées sociales, description, audio si disponible, et texte visible dans les visuels. " +
                 "Réponds uniquement avec un JSON valide contenant exactement les clés: " +
                 "title, description, prepTimeMinutes, cookTimeMinutes, servings, ingredients, steps, warnings, confidence. " +
                 "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning. " +
@@ -870,9 +1040,9 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
             {
               type: "input_text",
               text:
-                "Analyse cette recette vidéo.\n\n" +
+                `Analyse ce ${input.sourceKind === "video" ? "contenu vidéo" : "diaporama photo"} de recette.\n\n` +
                 `Métadonnées sociales:\n${JSON.stringify(input.metadata, null, 2)}\n\n` +
-                `Transcription audio:\n${input.transcript || "(aucune transcription exploitable)"}\n\n` +
+                `Transcription audio:\n${input.transcript || "(aucun audio exploitable)"}\n\n` +
                 "Consignes métier:\n" +
                 "- Le titre doit être court et naturel.\n" +
                 "- La description doit être propre et lisible dans une app familiale.\n" +
@@ -880,9 +1050,9 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
                 "- Les quantités peu fiables doivent aller dans warnings.\n" +
                 "- Ne renvoie rien d'autre que le JSON.",
             },
-            ...input.frames.map((frame) => ({
+            ...input.visuals.map((visual) => ({
               type: "input_image" as const,
-              image_url: frame.dataUrl,
+              image_url: visual.dataUrl,
               detail: "low" as const,
             })),
           ],
@@ -945,37 +1115,60 @@ export async function importRecipeFromSocialUrl(url: string) {
   try {
     const provider = getImportProvider();
     const metadata = await getSocialMetadata(url, tempDir);
-    const videoPath = await downloadSourceVideo(url, tempDir);
+    const sourceMedia = await downloadSourceMedia(url, tempDir);
     const analysis =
       provider === "gemini"
-        ? await analyzeRecipeFromVideoWithGemini({
-            metadata,
-            videoPath,
-          })
+        ? sourceMedia.kind === "video"
+          ? await analyzeRecipeFromVideoWithGemini({
+              metadata,
+              videoPath: sourceMedia.videoPath,
+            })
+          : await analyzeRecipeFromImageGalleryWithGemini({
+              metadata,
+              visuals: await loadVisualInputsFromImagePaths(sourceMedia.imagePaths),
+            })
         : await (async () => {
-            const [frames, audioPath] = await Promise.all([
-              extractFrames(videoPath, tempDir),
-              extractAudio(videoPath, tempDir),
-            ]);
-            const transcript = await transcribeAudio(audioPath);
+            const visuals =
+              sourceMedia.kind === "video"
+                ? await extractFrames(sourceMedia.videoPath, tempDir)
+                : await loadVisualInputsFromImagePaths(sourceMedia.imagePaths);
+            const transcript =
+              sourceMedia.kind === "video"
+                ? await transcribeAudio(
+                    await extractAudio(sourceMedia.videoPath, tempDir),
+                  )
+                : "";
 
             return analyzeRecipeFromMediaWithOpenAI({
               metadata,
               transcript,
-              frames,
+              visuals,
+              sourceKind: sourceMedia.kind,
             });
           })();
 
     let imageUrl = "";
 
-    try {
-      imageUrl = await extractPosterImage(
-        videoPath,
-        tempDir,
-        metadata.durationSeconds,
-      );
-    } catch {
-      imageUrl = "";
+    if (sourceMedia.kind === "video") {
+      try {
+        imageUrl = await extractPosterImage(
+          sourceMedia.videoPath,
+          tempDir,
+          metadata.durationSeconds,
+        );
+      } catch {
+        imageUrl = "";
+      }
+    } else if (sourceMedia.imagePaths[0]) {
+      try {
+        const firstImageBuffer = await fs.readFile(sourceMedia.imagePaths[0]);
+        imageUrl = await storeImageBuffer(
+          firstImageBuffer,
+          path.extname(sourceMedia.imagePaths[0]) || ".jpg",
+        );
+      } catch {
+        imageUrl = "";
+      }
     }
 
     if (!imageUrl && metadata.thumbnailUrl) {
@@ -988,10 +1181,17 @@ export async function importRecipeFromSocialUrl(url: string) {
 
     if (!imageUrl) {
       try {
-        const frames = await extractFrames(videoPath, tempDir);
-        if (frames[0]?.filePath) {
-          const firstFrameBuffer = await fs.readFile(frames[0].filePath);
-          imageUrl = await storeImageBuffer(firstFrameBuffer, ".jpg");
+        const visuals =
+          sourceMedia.kind === "video"
+            ? await extractFrames(sourceMedia.videoPath, tempDir)
+            : await loadVisualInputsFromImagePaths(sourceMedia.imagePaths);
+
+        if (visuals[0]?.filePath) {
+          const firstFrameBuffer = await fs.readFile(visuals[0].filePath);
+          imageUrl = await storeImageBuffer(
+            firstFrameBuffer,
+            path.extname(visuals[0].filePath) || ".jpg",
+          );
         }
       } catch {
         imageUrl = "";

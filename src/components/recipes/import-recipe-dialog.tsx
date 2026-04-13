@@ -43,8 +43,8 @@ export function ImportRecipeDialog({
 
   function getProgressLabel(value: number) {
     if (value < 20) return "Récupération du lien social...";
-    if (value < 45) return "Téléchargement de la vidéo...";
-    if (value < 75) return "Analyse de la vidéo et de l'audio...";
+    if (value < 45) return "Téléchargement du média...";
+    if (value < 75) return "Analyse des visuels et de l'audio...";
     if (value < 95) return "Création de la recette...";
     return "Ajout à ta collection...";
   }
@@ -127,8 +127,8 @@ export function ImportRecipeDialog({
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Colle un lien TikTok ou Instagram. Tablee analysera la
-                  description, les métadonnées et la vidéo elle-même pour
-                  ajouter directement la recette à ta collection.
+                  description, les métadonnées, la vidéo ou les photos du post
+                  pour ajouter directement la recette à ta collection.
                 </p>
               </div>
 

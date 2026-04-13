@@ -15,9 +15,9 @@ export function RecipeImportSpotlight() {
               Ajouter une recette depuis un lien
             </h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Colle un lien TikTok ou Instagram. Tablee analyse la vidéo, garde
-              la miniature quand elle est récupérable, puis ajoute la recette
-              directement à ta collection.
+              Colle un lien TikTok ou Instagram. Tablee analyse la vidéo ou le
+              diaporama photo, garde l’image principale quand elle est
+              récupérable, puis ajoute la recette directement à ta collection.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
