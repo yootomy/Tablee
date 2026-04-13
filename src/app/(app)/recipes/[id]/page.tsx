@@ -7,6 +7,7 @@ import { resolveRecipeMediaUrl } from "@/lib/media-url";
 import { formatDuration, formatQuantity } from "@/lib/formatters";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
+import { RecipeSourceViewerDialog } from "@/components/recipes/recipe-source-viewer-dialog";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,6 +136,10 @@ export default async function RecipeDetailPage({
       >
         {recipe.source_url ? (
           <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <RecipeSourceViewerDialog
+              sourceUrl={recipe.source_url}
+              title={recipe.title}
+            />
             <a
               href={recipe.source_url}
               target="_blank"
