@@ -32,6 +32,15 @@ const addRecipeIngredientsSchema = z.object({
   targetServings: z.coerce.number().int().min(1).optional(),
 });
 
+const addSelectedIngredientsSchema = z.object({
+  recipeId: z.string().uuid("La recette sélectionnée est invalide"),
+  locationId: z.string().uuid("Le lieu sélectionné est invalide"),
+  ingredientIds: z
+    .array(z.string().uuid())
+    .min(1, "Sélectionnez au moins un ingrédient"),
+  targetServings: z.coerce.number().int().min(1).optional(),
+});
+
 const addMealIngredientsSchema = z.object({
   mealPlanId: z.string().uuid("Le repas sélectionné est invalide"),
   locationId: z.string().uuid("Le lieu sélectionné est invalide"),
@@ -269,6 +278,66 @@ export async function addRecipeIngredientsToShopping(
       },
       include: {
         recipe_ingredients: {
+          orderBy: { position: "asc" },
+        },
+      },
+    }),
+  ]);
+
+  if (!location) {
+    return { success: false, error: "Le lieu sélectionné n'existe pas dans cette famille" };
+  }
+
+  if (!recipe) {
+    return { success: false, error: "La recette demandée est introuvable" };
+  }
+
+  const multiplier =
+    parsed.data.targetServings && recipe.servings && recipe.servings > 0
+      ? parsed.data.targetServings / recipe.servings
+      : 1;
+
+  const result = await createShoppingItemsFromIngredients({
+    familyId,
+    profileId,
+    locationId: parsed.data.locationId,
+    ingredients: recipe.recipe_ingredients,
+    sourceRecipeId: recipe.id,
+    multiplier,
+  });
+
+  if (!result.success) {
+    return result;
+  }
+
+  revalidateShoppingViews(parsed.data.locationId);
+
+  return { success: true };
+}
+
+export async function addSelectedIngredientsToShopping(
+  formData: FormData,
+): Promise<ActionResult> {
+  const { familyId, profileId } = await requireActiveFamily();
+
+  const parsed = addSelectedIngredientsSchema.safeParse({
+    recipeId: formData.get("recipeId"),
+    locationId: formData.get("locationId"),
+    ingredientIds: formData.getAll("ingredientId"),
+    targetServings: formData.get("targetServings") ?? undefined,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const [location, recipe] = await Promise.all([
+    ensureLocationBelongsToFamily(familyId, parsed.data.locationId),
+    prisma.recipes.findFirst({
+      where: { id: parsed.data.recipeId, family_id: familyId, archived_at: null },
+      include: {
+        recipe_ingredients: {
+          where: { id: { in: parsed.data.ingredientIds } },
           orderBy: { position: "asc" },
         },
       },

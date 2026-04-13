@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus, Users, ShoppingCart } from "lucide-react";
+import { Minus, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
+import { AddIngredientsToShoppingDialog } from "@/components/forms/add-ingredients-to-shopping-dialog";
 
 type SerializedIngredient = {
   id: string;
@@ -176,20 +176,22 @@ export function RecipeDetailClient({
       <div className="space-y-4">
         {locations.length > 0 && defaultLocationId ? (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShoppingCart className="size-4" />
-                Envoyer aux courses
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <AddIngredientsToShoppingForm
-                source="recipe"
-                sourceId={recipeId}
-                defaultLocationId={defaultLocationId}
+            <CardContent className="pt-5">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Choisissez les ingrédients à ajouter à la liste de courses.
+              </p>
+              <AddIngredientsToShoppingDialog
+                recipeId={recipeId}
+                ingredients={ingredients.map((ing) => ({
+                  id: ing.id,
+                  name: ing.name,
+                  quantityLabel:
+                    ing.quantity_numeric !== null
+                      ? formatScaledQty(ing.quantity_numeric, multiplier, ing.unit)
+                      : (ing.raw_quantity_text ?? null),
+                }))}
                 locations={locations}
-                buttonLabel="Ajouter les ingrédients"
-                description="Les ingrédients seront ajoutés à la liste de courses du lieu choisi."
+                defaultLocationId={defaultLocationId}
                 targetServings={showScaler ? currentServings : undefined}
               />
             </CardContent>
