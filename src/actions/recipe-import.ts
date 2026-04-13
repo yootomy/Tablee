@@ -103,11 +103,11 @@ function draftToPayload(draft: Awaited<ReturnType<typeof importRecipeFromSocialU
 }
 
 function formatImportErrorMessage(error: unknown) {
-  if (!(error instanceof Error)) {
+  const message = getImportErrorMessage(error);
+
+  if (!message) {
     return "L'import IA n'a pas pu aboutir pour ce lien.";
   }
-
-  const message = error.message;
 
   if (
     message.includes("quota") ||
@@ -126,5 +126,43 @@ function formatImportErrorMessage(error: unknown) {
     return "La clé du fournisseur IA n'est pas configurée correctement sur le serveur.";
   }
 
+  if (message.includes("UNAVAILABLE") || message.includes("high demand")) {
+    return "Le fournisseur IA est temporairement surchargé. Réessaie dans un instant.";
+  }
+
   return message;
+}
+
+function getImportErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    if ("message" in error && typeof error.message === "string") {
+      return error.message;
+    }
+
+    if (
+      "error" in error &&
+      typeof error.error === "object" &&
+      error.error !== null &&
+      "message" in error.error &&
+      typeof error.error.message === "string"
+    ) {
+      return error.error.message;
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }

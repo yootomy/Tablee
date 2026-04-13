@@ -257,6 +257,12 @@ export function getImportProvider(): ImportProvider {
   return "openai";
 }
 
+function hasProviderApiKey(provider: ImportProvider) {
+  return provider === "gemini"
+    ? Boolean(process.env.GEMINI_API_KEY?.trim())
+    : Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -864,6 +870,66 @@ function isRetryableGeminiError(error: unknown) {
   );
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    if ("message" in error && typeof error.message === "string") {
+      return error.message;
+    }
+
+    if (
+      "error" in error &&
+      typeof error.error === "object" &&
+      error.error !== null &&
+      "message" in error.error &&
+      typeof error.error.message === "string"
+    ) {
+      return error.error.message;
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Une erreur inconnue est survenue pendant l'import IA.";
+    }
+  }
+
+  return "Une erreur inconnue est survenue pendant l'import IA.";
+}
+
+function shouldTryFallbackProvider(error: unknown) {
+  const message = getErrorMessage(error);
+
+  return (
+    message.includes("quota") ||
+    message.includes("billing") ||
+    message.includes("429") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("UNAVAILABLE") ||
+    message.includes("high demand") ||
+    message.includes("OPENAI_API_KEY") ||
+    message.includes("GEMINI_API_KEY") ||
+    message.includes("API key not valid")
+  );
+}
+
+function getProviderExecutionOrder(primaryProvider: ImportProvider) {
+  const fallbackProvider: ImportProvider =
+    primaryProvider === "gemini" ? "openai" : "gemini";
+
+  return [
+    primaryProvider,
+    ...(hasProviderApiKey(fallbackProvider) ? [fallbackProvider] : []),
+  ];
+}
+
 function buildGeminiRecipeImportPrompt(input: {
   metadata: SocialVideoMetadata;
   sourceKind: "video" | "image-gallery";
@@ -1005,6 +1071,45 @@ async function analyzeRecipeFromImageGalleryWithGemini(input: {
     : new Error("Gemini n'a pas réussi à analyser le diaporama.");
 }
 
+async function analyzeRecipeWithProvider(input: {
+  provider: ImportProvider;
+  metadata: SocialVideoMetadata;
+  sourceMedia: DownloadedSocialMedia;
+  tempDir: string;
+}) {
+  if (input.provider === "gemini") {
+    if (input.sourceMedia.kind === "video") {
+      return analyzeRecipeFromVideoWithGemini({
+        metadata: input.metadata,
+        videoPath: input.sourceMedia.videoPath,
+      });
+    }
+
+    return analyzeRecipeFromImageGalleryWithGemini({
+      metadata: input.metadata,
+      visuals: await loadVisualInputsFromImagePaths(input.sourceMedia.imagePaths),
+    });
+  }
+
+  const visuals =
+    input.sourceMedia.kind === "video"
+      ? await extractFrames(input.sourceMedia.videoPath, input.tempDir)
+      : await loadVisualInputsFromImagePaths(input.sourceMedia.imagePaths);
+  const transcript =
+    input.sourceMedia.kind === "video"
+      ? await transcribeAudio(
+          await extractAudio(input.sourceMedia.videoPath, input.tempDir),
+        )
+      : "";
+
+  return analyzeRecipeFromMediaWithOpenAI({
+    metadata: input.metadata,
+    transcript,
+    visuals,
+    sourceKind: input.sourceMedia.kind,
+  });
+}
+
 async function analyzeRecipeFromMediaWithOpenAI(input: {
   metadata: SocialVideoMetadata;
   transcript: string;
@@ -1116,36 +1221,36 @@ export async function importRecipeFromSocialUrl(url: string) {
     const provider = getImportProvider();
     const metadata = await getSocialMetadata(url, tempDir);
     const sourceMedia = await downloadSourceMedia(url, tempDir);
-    const analysis =
-      provider === "gemini"
-        ? sourceMedia.kind === "video"
-          ? await analyzeRecipeFromVideoWithGemini({
-              metadata,
-              videoPath: sourceMedia.videoPath,
-            })
-          : await analyzeRecipeFromImageGalleryWithGemini({
-              metadata,
-              visuals: await loadVisualInputsFromImagePaths(sourceMedia.imagePaths),
-            })
-        : await (async () => {
-            const visuals =
-              sourceMedia.kind === "video"
-                ? await extractFrames(sourceMedia.videoPath, tempDir)
-                : await loadVisualInputsFromImagePaths(sourceMedia.imagePaths);
-            const transcript =
-              sourceMedia.kind === "video"
-                ? await transcribeAudio(
-                    await extractAudio(sourceMedia.videoPath, tempDir),
-                  )
-                : "";
+    const providersToTry = getProviderExecutionOrder(provider);
+    let analysis: z.infer<typeof recipeImportResponseSchema> | null = null;
+    let lastAnalysisError: unknown = null;
 
-            return analyzeRecipeFromMediaWithOpenAI({
-              metadata,
-              transcript,
-              visuals,
-              sourceKind: sourceMedia.kind,
-            });
-          })();
+    for (const providerToTry of providersToTry) {
+      try {
+        analysis = await analyzeRecipeWithProvider({
+          provider: providerToTry,
+          metadata,
+          sourceMedia,
+          tempDir,
+        });
+        break;
+      } catch (error) {
+        lastAnalysisError = error;
+
+        const hasFallbackRemaining =
+          providerToTry !== providersToTry[providersToTry.length - 1];
+
+        if (!hasFallbackRemaining || !shouldTryFallbackProvider(error)) {
+          throw error;
+        }
+      }
+    }
+
+    if (!analysis) {
+      throw lastAnalysisError instanceof Error
+        ? lastAnalysisError
+        : new Error("L'analyse IA n'a pas pu aboutir pour ce lien.");
+    }
 
     let imageUrl = "";
 
