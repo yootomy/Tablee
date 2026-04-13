@@ -29,6 +29,7 @@ const deleteShoppingItemSchema = z.object({
 const addRecipeIngredientsSchema = z.object({
   recipeId: z.string().uuid("La recette sélectionnée est invalide"),
   locationId: z.string().uuid("Le lieu sélectionné est invalide"),
+  targetServings: z.coerce.number().int().min(1).optional(),
 });
 
 const addMealIngredientsSchema = z.object({
@@ -68,6 +69,7 @@ async function createShoppingItemsFromIngredients({
   ingredients,
   sourceRecipeId,
   sourceMealPlanId,
+  multiplier = 1,
 }: {
   familyId: string;
   profileId: string;
@@ -81,6 +83,7 @@ async function createShoppingItemsFromIngredients({
   }>;
   sourceRecipeId?: string | null;
   sourceMealPlanId?: string | null;
+  multiplier?: number;
 }) {
   if (ingredients.length === 0) {
     return { success: false as const, error: "Cette recette ne contient aucun ingrédient" };
@@ -91,7 +94,10 @@ async function createShoppingItemsFromIngredients({
       family_id: familyId,
       location_id: locationId,
       name: ingredient.name,
-      quantity_numeric: ingredient.quantity_numeric?.toString() ?? null,
+      quantity_numeric:
+        ingredient.quantity_numeric !== null
+          ? (Number(ingredient.quantity_numeric.toString()) * multiplier).toString()
+          : null,
       unit: ingredient.unit ?? null,
       raw_quantity_text: ingredient.raw_quantity_text ?? null,
       comment: ingredient.note ?? null,
@@ -246,6 +252,7 @@ export async function addRecipeIngredientsToShopping(
   const parsed = addRecipeIngredientsSchema.safeParse({
     recipeId: formData.get("recipeId"),
     locationId: formData.get("locationId"),
+    targetServings: formData.get("targetServings") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -276,12 +283,18 @@ export async function addRecipeIngredientsToShopping(
     return { success: false, error: "La recette demandée est introuvable" };
   }
 
+  const multiplier =
+    parsed.data.targetServings && recipe.servings && recipe.servings > 0
+      ? parsed.data.targetServings / recipe.servings
+      : 1;
+
   const result = await createShoppingItemsFromIngredients({
     familyId,
     profileId,
     locationId: parsed.data.locationId,
     ingredients: recipe.recipe_ingredients,
     sourceRecipeId: recipe.id,
+    multiplier,
   });
 
   if (!result.success) {

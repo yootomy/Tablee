@@ -84,7 +84,7 @@ export function RecipeSourceViewerDialog({
   const frameClassName =
     embed.kind === "square"
       ? "aspect-square max-h-[min(55vh,20rem)] w-auto mx-auto"
-      : "aspect-[9/16] max-h-[min(65vh,26rem)] w-auto mx-auto";
+      : "aspect-[9/16] max-h-[min(65vh,26rem)] sm:max-h-[min(70vh,32rem)] w-auto mx-auto";
 
   return (
     <>

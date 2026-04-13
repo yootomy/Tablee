@@ -20,6 +20,7 @@ interface AddIngredientsToShoppingFormProps {
   locations: LocationOption[];
   buttonLabel: string;
   description?: string;
+  targetServings?: number;
 }
 
 export function AddIngredientsToShoppingForm({
@@ -29,6 +30,7 @@ export function AddIngredientsToShoppingForm({
   locations,
   buttonLabel,
   description,
+  targetServings,
 }: AddIngredientsToShoppingFormProps) {
   const [locationId, setLocationId] = useState(defaultLocationId);
   const [loading, setLoading] = useState(false);
@@ -74,6 +76,9 @@ export function AddIngredientsToShoppingForm({
       ) : (
         <input type="hidden" name="mealPlanId" value={sourceId} />
       )}
+      {targetServings !== undefined ? (
+        <input type="hidden" name="targetServings" value={String(targetServings)} />
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor={`shopping-location-${source}-${sourceId}`}>
