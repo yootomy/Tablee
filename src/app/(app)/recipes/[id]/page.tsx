@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getPreferredLocationId } from "@/lib/location-preferences";
-import { resolveMediaUrl } from "@/lib/media-url";
+import { resolveRecipeMediaUrl } from "@/lib/media-url";
 import { formatDuration, formatQuantity } from "@/lib/formatters";
 import { AddIngredientsToShoppingForm } from "@/components/forms/add-ingredients-to-shopping-form";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
@@ -61,7 +61,7 @@ export default async function RecipeDetailPage({
 
   const totalMinutes =
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
-  const recipeImageUrl = resolveMediaUrl(recipe.image_url);
+  const recipeImageUrl = resolveRecipeMediaUrl(recipe.id, recipe.image_url);
   const preferredLocationId = getPreferredLocationId(
     locations,
     familyContextPreferences?.last_selected_location_id,

@@ -21,3 +21,7 @@ export function getRecipeMediaFilename(value: string) {
 export function getRecipeMediaUrl(filename: string) {
   return `${RECIPE_MEDIA_ROUTE_PREFIX}/${filename}`;
 }
+
+export function getRecipeScopedMediaUrl(recipeId: string) {
+  return `/recipes/${recipeId}/image`;
+}

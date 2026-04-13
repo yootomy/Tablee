@@ -42,17 +42,21 @@
 ## Current product conventions
 
 - Active family is stored in `profile_preferences.active_family_id`.
+- If `active_family_id` is missing or stale, the app now falls back to the first joined family in read mode instead of mutating DB from a layout render.
 - Per-family user context is stored in `family_context_preferences`.
 - `family_context_preferences.last_selected_location_id` is used as the preferred/default location.
 - When a page or action needs a default location, it should use the preferred location if available.
 - Shared helper for that logic:
   - `src/lib/location-preferences.ts`
 - AI recipe import lives in `src/lib/recipe-import.ts`.
+- Import jobs and quotas are tracked in `recipe_import_jobs`.
+- Postgres-backed abuse protection lives in `request_rate_limits`.
 - If both keys exist, the social import should prefer Gemini automatically.
 - Relevant env vars:
   - `GEMINI_API_KEY`
   - `OPENAI_API_KEY`
   - optional `AI_RECIPE_IMPORT_PROVIDER=gemini|openai`
+  - rate-limit and AI limit vars from `.env.example`
 
 ## Important files
 
@@ -60,6 +64,8 @@
 - Authenticated layout: `src/app/(app)/layout.tsx`
 - Global styles: `src/app/globals.css`
 - Auth helpers: `src/lib/auth-utils.ts`
+- Abuse control: `src/lib/rate-limit.ts`
+- Runtime schema guards: `src/lib/app-schema.ts`
 - Prisma schema: `prisma/schema.prisma`
 - UI notes: `docs/design-system.md`
 - Architecture notes: `docs/ARCHITECTURE_TECHNIQUE.md`
@@ -94,15 +100,16 @@ git push origin main
 ### Deploy command
 
 ```powershell
-ssh -o StrictHostKeyChecking=no root@192.168.1.106 "pct exec 112 -- bash -lc 'cd /opt/Tablee && git pull && npx prisma generate && npx next build && pm2 restart tablee --update-env'"
+ssh -o StrictHostKeyChecking=no root@192.168.1.106 "pct exec 112 -- bash -lc 'cd /opt/Tablee && git pull && npm install && npx prisma generate && npx next build && pm2 restart tablee --update-env'"
 ```
 
 ### What a normal deploy should do
 
 1. `git pull`
-2. `npx prisma generate`
-3. `npx next build`
-4. `pm2 restart tablee --update-env`
+2. `npm install`
+3. `npx prisma generate`
+4. `npx next build`
+5. `pm2 restart tablee --update-env`
 
 ### After deploy
 
@@ -121,6 +128,7 @@ npx eslint "<absolute-or-repo-path>"
 - For full app validation:
 
 ```powershell
+npm run test
 npm run build
 ```
 

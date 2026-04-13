@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getMealWeekHref } from "@/lib/calendar";
+import { parseIngredientQuantity } from "@/lib/ingredient-quantity";
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -34,32 +35,6 @@ const addMealIngredientsSchema = z.object({
   mealPlanId: z.string().uuid("Le repas sélectionné est invalide"),
   locationId: z.string().uuid("Le lieu sélectionné est invalide"),
 });
-
-function parseIngredientQuantity(quantity: string) {
-  const trimmed = quantity.trim();
-
-  if (!trimmed) {
-    return {
-      quantity_numeric: null,
-      raw_quantity_text: null,
-    };
-  }
-
-  const normalized = trimmed.replace(",", ".");
-  const isNumeric = /^\d+(\.\d+)?$/.test(normalized);
-
-  if (!isNumeric) {
-    return {
-      quantity_numeric: null,
-      raw_quantity_text: trimmed,
-    };
-  }
-
-  return {
-    quantity_numeric: normalized,
-    raw_quantity_text: null,
-  };
-}
 
 async function ensureLocationBelongsToFamily(
   familyId: string,

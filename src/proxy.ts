@@ -2,7 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const APP_BASE_PATH = "/tablee";
-const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/manifest.webmanifest",
+  "/favicon.ico",
+  "/logo-tablee-nobg.png",
+  "/file.svg",
+  "/globe.svg",
+  "/next.svg",
+  "/vercel.svg",
+  "/window.svg",
+]);
 
 function stripBasePath(pathname: string) {
   if (pathname === APP_BASE_PATH) {
@@ -27,11 +39,8 @@ export function proxy(request: NextRequest) {
   const normalizedPathname = stripBasePath(pathname);
 
   if (
-    normalizedPathname.startsWith("/login") ||
-    normalizedPathname.startsWith("/register") ||
     normalizedPathname.startsWith("/api/auth") ||
-    normalizedPathname === "/" ||
-    PUBLIC_FILE_PATTERN.test(normalizedPathname)
+    PUBLIC_PATHS.has(normalizedPathname)
   ) {
     return NextResponse.next();
   }

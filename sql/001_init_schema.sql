@@ -34,7 +34,17 @@ CREATE TABLE families (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2.3 profile_preferences
+-- 2.3 oauth_accounts
+CREATE TABLE oauth_accounts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    provider text NOT NULL,
+    provider_account_id text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (provider, provider_account_id)
+);
+
+-- 2.4 profile_preferences
 CREATE TABLE profile_preferences (
     profile_id uuid PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
     active_family_id uuid NULL REFERENCES families(id) ON DELETE SET NULL,
@@ -42,7 +52,7 @@ CREATE TABLE profile_preferences (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2.4 family_members
+-- 2.5 family_members
 CREATE TABLE family_members (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -54,7 +64,7 @@ CREATE TABLE family_members (
     UNIQUE (family_id, profile_id)
 );
 
--- 2.5 family_invites
+-- 2.6 family_invites
 CREATE TABLE family_invites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -69,7 +79,7 @@ CREATE TABLE family_invites (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2.6 family_context_preferences
+-- 2.7 family_context_preferences
 CREATE TABLE family_context_preferences (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -80,7 +90,7 @@ CREATE TABLE family_context_preferences (
     UNIQUE (profile_id, family_id)
 );
 
--- 2.7 locations
+-- 2.8 locations
 CREATE TABLE locations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -96,7 +106,7 @@ ALTER TABLE family_context_preferences
     ADD CONSTRAINT fk_fcp_location
     FOREIGN KEY (last_selected_location_id) REFERENCES locations(id) ON DELETE SET NULL;
 
--- 2.8 recipes
+-- 2.9 recipes
 CREATE TABLE recipes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -108,6 +118,7 @@ CREATE TABLE recipes (
     cook_time_minutes integer NULL CHECK (cook_time_minutes >= 0),
     servings integer NULL CHECK (servings > 0),
     source_url text NULL,
+    image_url text NULL,
     archived_at timestamptz NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -116,7 +127,7 @@ CREATE TABLE recipes (
     FOREIGN KEY (family_id, updated_by_profile_id) REFERENCES family_members(family_id, profile_id)
 );
 
--- 2.9 recipe_ingredients
+-- 2.10 recipe_ingredients
 CREATE TABLE recipe_ingredients (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
@@ -130,7 +141,7 @@ CREATE TABLE recipe_ingredients (
     UNIQUE (recipe_id, position)
 );
 
--- 2.10 recipe_steps
+-- 2.11 recipe_steps
 CREATE TABLE recipe_steps (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
@@ -140,7 +151,7 @@ CREATE TABLE recipe_steps (
     UNIQUE (recipe_id, position)
 );
 
--- 2.11 meal_plans
+-- 2.12 meal_plans
 CREATE TABLE meal_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -162,7 +173,7 @@ CREATE TABLE meal_plans (
     FOREIGN KEY (family_id, recipe_id) REFERENCES recipes(family_id, id) ON DELETE SET NULL
 );
 
--- 2.12 shopping_items
+-- 2.13 shopping_items
 CREATE TABLE shopping_items (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -187,7 +198,7 @@ CREATE TABLE shopping_items (
     FOREIGN KEY (family_id, source_meal_plan_id) REFERENCES meal_plans(family_id, id) ON DELETE SET NULL
 );
 
--- 2.13 activity_logs (optionnel, phase 2)
+-- 2.14 activity_logs (optionnel, phase 2)
 CREATE TABLE activity_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -197,6 +208,37 @@ CREATE TABLE activity_logs (
     action text NOT NULL,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 2.15 request_rate_limits
+CREATE TABLE request_rate_limits (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    scope text NOT NULL,
+    identifier text NOT NULL,
+    window_start timestamptz NOT NULL,
+    hit_count integer NOT NULL DEFAULT 1,
+    last_hit_at timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (scope, identifier, window_start)
+);
+
+-- 2.16 recipe_import_jobs
+CREATE TABLE recipe_import_jobs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    family_id uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+    requested_by_profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    provider text NOT NULL,
+    source_url text NOT NULL,
+    source_url_hash text NOT NULL,
+    status text NOT NULL,
+    recipe_id uuid NULL REFERENCES recipes(id) ON DELETE SET NULL,
+    error_message text NULL,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    started_at timestamptz NULL,
+    finished_at timestamptz NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 -- ============================================================
@@ -214,6 +256,10 @@ CREATE INDEX idx_meal_plans_family_date_slot ON meal_plans(family_id, meal_date,
 CREATE INDEX idx_meal_plans_family_location_date ON meal_plans(family_id, location_id, meal_date);
 CREATE INDEX idx_shopping_items_family_loc_completed ON shopping_items(family_id, location_id, is_completed, created_at DESC);
 CREATE INDEX idx_shopping_items_family_source_recipe ON shopping_items(family_id, source_recipe_id);
+CREATE INDEX idx_request_rate_limits_scope_identifier_last_hit ON request_rate_limits(scope, identifier, last_hit_at DESC);
+CREATE INDEX idx_recipe_import_jobs_family_status_created ON recipe_import_jobs(family_id, status, created_at DESC);
+CREATE INDEX idx_recipe_import_jobs_profile_created ON recipe_import_jobs(requested_by_profile_id, created_at DESC);
+CREATE INDEX idx_recipe_import_jobs_source_hash ON recipe_import_jobs(family_id, source_url_hash, created_at DESC);
 
 -- Index unique partiel : pas de doublon de nom de lieu actif par famille
 CREATE UNIQUE INDEX idx_locations_unique_name_per_family
@@ -240,6 +286,8 @@ CREATE TRIGGER trg_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW 
 CREATE TRIGGER trg_recipes_updated_at BEFORE UPDATE ON recipes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_meal_plans_updated_at BEFORE UPDATE ON meal_plans FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_shopping_items_updated_at BEFORE UPDATE ON shopping_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_request_rate_limits_updated_at BEFORE UPDATE ON request_rate_limits FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_recipe_import_jobs_updated_at BEFORE UPDATE ON recipe_import_jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
 -- 5. GRANT permissions to tablee_app

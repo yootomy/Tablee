@@ -259,6 +259,41 @@ model shopping_items {
   @@index([family_id, source_recipe_id], map: "idx_shopping_items_family_source_recipe")
 }
 
+model request_rate_limits {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope        String
+  identifier   String
+  window_start DateTime @db.Timestamptz(6)
+  hit_count    Int      @default(1)
+  last_hit_at  DateTime @default(now()) @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([scope, identifier, window_start], map: "idx_request_rate_limits_scope_identifier_window")
+  @@index([scope, identifier, last_hit_at(sort: Desc)], map: "idx_request_rate_limits_scope_identifier_last_hit")
+}
+
+model recipe_import_jobs {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_id               String   @db.Uuid
+  requested_by_profile_id String   @db.Uuid
+  provider                String
+  source_url              String
+  source_url_hash         String
+  status                  String
+  recipe_id               String?  @db.Uuid
+  error_message           String?
+  metadata                Json     @default("{}")
+  started_at              DateTime? @db.Timestamptz(6)
+  finished_at             DateTime? @db.Timestamptz(6)
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([family_id, status, created_at(sort: Desc)], map: "idx_recipe_import_jobs_family_status_created")
+  @@index([requested_by_profile_id, created_at(sort: Desc)], map: "idx_recipe_import_jobs_profile_created")
+  @@index([family_id, source_url_hash, created_at(sort: Desc)], map: "idx_recipe_import_jobs_source_hash")
+}
+
 enum family_role {
   admin
   member

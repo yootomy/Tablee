@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Clock, Users, Plus, LayoutGrid, List, ChefHat } from "lucide-react";
-import { resolveMediaUrl } from "@/lib/media-url";
+import { resolveRecipeMediaUrl } from "@/lib/media-url";
 import { formatDuration } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +107,7 @@ function ListView({ recipes }: { recipes: RecipeItem[] }) {
   return (
     <div className="space-y-3">
       {recipes.map((recipe) => {
-        const imageUrl = resolveMediaUrl(recipe.image_url);
+        const imageUrl = resolveRecipeMediaUrl(recipe.id, recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
             ? formatDuration(
@@ -171,7 +171,7 @@ function GridView({ recipes }: { recipes: RecipeItem[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {recipes.map((recipe) => {
-        const imageUrl = resolveMediaUrl(recipe.image_url);
+        const imageUrl = resolveRecipeMediaUrl(recipe.id, recipe.image_url);
         const total =
           recipe.prep_time_minutes || recipe.cook_time_minutes
             ? formatDuration(

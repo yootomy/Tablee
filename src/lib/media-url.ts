@@ -1,5 +1,6 @@
 import {
   getRecipeMediaFilename,
+  getRecipeScopedMediaUrl,
   getRecipeMediaUrl,
   RECIPE_MEDIA_ROUTE_PREFIX,
 } from "@/lib/recipe-media-storage";
@@ -34,4 +35,24 @@ export function resolveMediaUrl(value: string | null | undefined) {
   }
 
   return `${BASE_PATH}/${trimmed.replace(/^\/+/, "")}`;
+}
+
+export function resolveRecipeMediaUrl(
+  recipeId: string,
+  value: string | null | undefined,
+) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (
+    trimmed.includes("/imported/recipes/") ||
+    trimmed.includes(`${RECIPE_MEDIA_ROUTE_PREFIX}/`)
+  ) {
+    return `${BASE_PATH}${getRecipeScopedMediaUrl(recipeId)}`;
+  }
+
+  return resolveMediaUrl(trimmed);
 }

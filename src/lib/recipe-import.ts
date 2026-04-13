@@ -32,6 +32,20 @@ const OPENAI_RECIPE_IMPORT_MODEL =
   process.env.OPENAI_RECIPE_IMPORT_MODEL || "gpt-4.1-mini";
 const OPENAI_RECIPE_TRANSCRIBE_MODEL =
   process.env.OPENAI_RECIPE_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
+const DOWNLOAD_TIMEOUT_MS = Number(
+  process.env.AI_RECIPE_IMPORT_DOWNLOAD_TIMEOUT_MS ?? 120000,
+);
+const MEDIA_PROCESS_TIMEOUT_MS = Number(
+  process.env.AI_RECIPE_IMPORT_MEDIA_TIMEOUT_MS ?? 90000,
+);
+const AI_ANALYSIS_TIMEOUT_MS = Number(
+  process.env.AI_RECIPE_IMPORT_ANALYSIS_TIMEOUT_MS ?? 180000,
+);
+const MAX_VIDEO_DURATION_SECONDS = Number(
+  process.env.AI_RECIPE_IMPORT_MAX_DURATION_SECONDS ?? 600,
+);
+const MAX_VIDEO_FILE_SIZE_BYTES =
+  Number(process.env.AI_RECIPE_IMPORT_MAX_FILE_SIZE_MB ?? 120) * 1024 * 1024;
 const MAX_FRAMES = 6;
 const FRAME_INTERVAL_SECONDS = 6;
 
@@ -202,7 +216,7 @@ function detectPlatform(value: string): SocialPlatform {
   return hostname.includes("instagram") ? "instagram" : "tiktok";
 }
 
-function getImportProvider(): ImportProvider {
+export function getImportProvider(): ImportProvider {
   const configured = AI_RECIPE_IMPORT_PROVIDER?.trim().toLowerCase();
 
   if (configured === "gemini" || configured === "openai") {
@@ -295,7 +309,11 @@ async function storeImageBuffer(buffer: Buffer, extension: string) {
 }
 
 async function downloadAndStoreImage(url: string) {
-  const response = await fetch(url);
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), DOWNLOAD_TIMEOUT_MS);
+  const response = await fetch(url, {
+    signal: abortController.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     throw new Error("Impossible de télécharger la miniature de la vidéo.");
@@ -309,11 +327,17 @@ async function downloadAndStoreImage(url: string) {
   return storeImageBuffer(buffer, extension);
 }
 
-async function runCommand(command: string, args: string[], cwd: string) {
+async function runCommand(
+  command: string,
+  args: string[],
+  cwd: string,
+  timeoutMs = DOWNLOAD_TIMEOUT_MS,
+) {
   try {
     return await execFileAsync(command, args, {
       cwd,
       maxBuffer: 32 * 1024 * 1024,
+      timeout: timeoutMs,
       windowsHide: true,
     });
   } catch (error) {
@@ -328,7 +352,39 @@ async function runCommand(command: string, args: string[], cwd: string) {
       );
     }
 
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "killed" in error &&
+      error.killed
+    ) {
+      throw new Error(
+        `${command} a dépassé le temps maximum autorisé pour un import IA.`,
+      );
+    }
+
     throw error;
+  }
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -411,6 +467,7 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
       ytDlpBin,
       ["--dump-single-json", "--no-playlist", "--skip-download", url],
       cwd,
+      DOWNLOAD_TIMEOUT_MS,
     ));
   } catch (error) {
     throw new Error(formatCommandError(error, "yt-dlp"));
@@ -427,7 +484,7 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
     tags?: string[] | null;
   };
 
-  return {
+  const metadata = {
     platform: detectPlatform(url),
     title: payload.title?.trim() || "Recette importée",
     description: payload.description?.trim() || "",
@@ -438,6 +495,19 @@ async function getSocialMetadata(url: string, cwd: string): Promise<SocialVideoM
       typeof payload.duration === "number" ? Math.round(payload.duration) : null,
     tags: payload.tags?.filter(Boolean) ?? [],
   };
+
+  if (
+    metadata.durationSeconds &&
+    metadata.durationSeconds > MAX_VIDEO_DURATION_SECONDS
+  ) {
+    throw new Error(
+      `Cette vidéo dure plus de ${Math.floor(
+        MAX_VIDEO_DURATION_SECONDS / 60,
+      )} minutes, ce qui dépasse la limite d'import.`,
+    );
+  }
+
+  return metadata;
 }
 
 async function downloadSourceVideo(url: string, cwd: string) {
@@ -458,6 +528,7 @@ async function downloadSourceVideo(url: string, cwd: string) {
         url,
       ],
       cwd,
+      DOWNLOAD_TIMEOUT_MS,
     );
   } catch (error) {
     throw new Error(formatCommandError(error, "yt-dlp"));
@@ -470,7 +541,18 @@ async function downloadSourceVideo(url: string, cwd: string) {
     throw new Error("La vidéo source n'a pas pu être téléchargée.");
   }
 
-  return path.join(cwd, candidate);
+  const videoPath = path.join(cwd, candidate);
+  const fileStat = await fs.stat(videoPath);
+
+  if (fileStat.size > MAX_VIDEO_FILE_SIZE_BYTES) {
+    throw new Error(
+      `La vidéo dépasse ${Math.round(
+        MAX_VIDEO_FILE_SIZE_BYTES / (1024 * 1024),
+      )} MB, ce qui est trop lourd pour un import IA.`,
+    );
+  }
+
+  return videoPath;
 }
 
 async function extractFrames(videoPath: string, cwd: string) {
@@ -491,6 +573,7 @@ async function extractFrames(videoPath: string, cwd: string) {
         pattern,
       ],
       cwd,
+      MEDIA_PROCESS_TIMEOUT_MS,
     );
   } catch (error) {
     throw new Error(formatCommandError(error, "ffmpeg"));
@@ -540,6 +623,7 @@ async function extractPosterImage(videoPath: string, cwd: string, durationSecond
         posterPath,
       ],
       cwd,
+      MEDIA_PROCESS_TIMEOUT_MS,
     );
   } catch (error) {
     throw new Error(formatCommandError(error, "ffmpeg"));
@@ -570,6 +654,7 @@ async function extractAudio(videoPath: string, cwd: string) {
         audioPath,
       ],
       cwd,
+      MEDIA_PROCESS_TIMEOUT_MS,
     );
   } catch (error) {
     throw new Error(formatCommandError(error, "ffmpeg"));
@@ -580,10 +665,14 @@ async function extractAudio(videoPath: string, cwd: string) {
 
 async function transcribeAudio(audioPath: string) {
   const client = getOpenAIClient();
-  const response = await client.audio.transcriptions.create({
-    file: createReadStream(audioPath),
-    model: OPENAI_RECIPE_TRANSCRIBE_MODEL,
-  });
+  const response = await withTimeout(
+    client.audio.transcriptions.create({
+      file: createReadStream(audioPath),
+      model: OPENAI_RECIPE_TRANSCRIBE_MODEL,
+    }),
+    AI_ANALYSIS_TIMEOUT_MS,
+    "La transcription audio a pris trop de temps.",
+  );
 
   return response.text?.trim() || "";
 }
@@ -694,25 +783,29 @@ async function analyzeRecipeFromVideoWithGemini(input: {
       attempt += 1
     ) {
       try {
-        const response = await ai.models.generateContent({
-          model: GEMINI_RECIPE_IMPORT_MODEL,
-          contents: createUserContent([
-            createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
-            [
-              "Tu analyses une vidéo de recette publiée sur un réseau social.",
-              "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
-              "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
-              "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
-              "Ne renvoie que le JSON demandé par le schéma.",
-              "",
-              `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
-            ].join("\n"),
-          ]),
-          config: {
-            responseMimeType: "application/json",
-            responseJsonSchema: geminiRecipeJsonSchema,
-          },
-        });
+        const response = await withTimeout(
+          ai.models.generateContent({
+            model: GEMINI_RECIPE_IMPORT_MODEL,
+            contents: createUserContent([
+              createPartFromUri(uploadedFile.uri, uploadedFile.mimeType || mimeType),
+              [
+                "Tu analyses une vidéo de recette publiée sur un réseau social.",
+                "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
+                "Tu dois utiliser tous les signaux disponibles : la vidéo, l'audio inclus dans la vidéo, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
+                "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
+                "Ne renvoie que le JSON demandé par le schéma.",
+                "",
+                `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
+              ].join("\n"),
+            ]),
+            config: {
+              responseMimeType: "application/json",
+              responseJsonSchema: geminiRecipeJsonSchema,
+            },
+          }),
+          AI_ANALYSIS_TIMEOUT_MS,
+          "L'analyse Gemini a pris trop de temps.",
+        );
 
         return recipeImportResponseSchema.parse(JSON.parse(response.text || "{}"));
       } catch (error) {
@@ -749,52 +842,56 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
   frames: Array<{ dataUrl: string }>;
 }) {
   const client = getOpenAIClient();
-  const response = await client.responses.create({
-    model: OPENAI_RECIPE_IMPORT_MODEL,
-    max_output_tokens: 1800,
-    input: [
-      {
-        role: "system",
-        content: [
-          {
-            type: "input_text",
-            text:
-              "Tu analyses une vidéo de recette publiée sur un réseau social. " +
-              "Ta mission est de reconstituer un brouillon de recette exploitable par un humain. " +
-              "Tu dois utiliser tous les signaux disponibles: métadonnées sociales, description, transcription audio, et texte visible dans les frames. " +
-              "Réponds uniquement avec un JSON valide contenant exactement les clés: " +
-              "title, description, prepTimeMinutes, cookTimeMinutes, servings, ingredients, steps, warnings, confidence. " +
-              "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning. " +
-              "Les ingrédients doivent contenir: name, quantity, unit, note. " +
-              "Les étapes doivent contenir: instruction.",
-          },
-        ],
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text:
-              "Analyse cette recette vidéo.\n\n" +
-              `Métadonnées sociales:\n${JSON.stringify(input.metadata, null, 2)}\n\n` +
-              `Transcription audio:\n${input.transcript || "(aucune transcription exploitable)"}\n\n` +
-              "Consignes métier:\n" +
-              "- Le titre doit être court et naturel.\n" +
-              "- La description doit être propre et lisible dans une app familiale.\n" +
-              "- Les temps sont en minutes.\n" +
-              "- Les quantités peu fiables doivent aller dans warnings.\n" +
-              "- Ne renvoie rien d'autre que le JSON.",
-          },
-          ...input.frames.map((frame) => ({
-            type: "input_image" as const,
-            image_url: frame.dataUrl,
-            detail: "low" as const,
-          })),
-        ],
-      },
-    ],
-  });
+  const response = await withTimeout(
+    client.responses.create({
+      model: OPENAI_RECIPE_IMPORT_MODEL,
+      max_output_tokens: 1800,
+      input: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "Tu analyses une vidéo de recette publiée sur un réseau social. " +
+                "Ta mission est de reconstituer un brouillon de recette exploitable par un humain. " +
+                "Tu dois utiliser tous les signaux disponibles: métadonnées sociales, description, transcription audio, et texte visible dans les frames. " +
+                "Réponds uniquement avec un JSON valide contenant exactement les clés: " +
+                "title, description, prepTimeMinutes, cookTimeMinutes, servings, ingredients, steps, warnings, confidence. " +
+                "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning. " +
+                "Les ingrédients doivent contenir: name, quantity, unit, note. " +
+                "Les étapes doivent contenir: instruction.",
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "Analyse cette recette vidéo.\n\n" +
+                `Métadonnées sociales:\n${JSON.stringify(input.metadata, null, 2)}\n\n` +
+                `Transcription audio:\n${input.transcript || "(aucune transcription exploitable)"}\n\n` +
+                "Consignes métier:\n" +
+                "- Le titre doit être court et naturel.\n" +
+                "- La description doit être propre et lisible dans une app familiale.\n" +
+                "- Les temps sont en minutes.\n" +
+                "- Les quantités peu fiables doivent aller dans warnings.\n" +
+                "- Ne renvoie rien d'autre que le JSON.",
+            },
+            ...input.frames.map((frame) => ({
+              type: "input_image" as const,
+              image_url: frame.dataUrl,
+              detail: "low" as const,
+            })),
+          ],
+        },
+      ],
+    }),
+    AI_ANALYSIS_TIMEOUT_MS,
+    "L'analyse OpenAI a pris trop de temps.",
+  );
 
   const parsedJson = extractJsonObject(response.output_text);
   return recipeImportResponseSchema.parse(parsedJson);

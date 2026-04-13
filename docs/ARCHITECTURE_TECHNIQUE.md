@@ -31,7 +31,8 @@ Tablee est une application web responsive de planification familiale de repas, r
 - Base: `tablee`
 - User applicatif: `tablee_app`
 - Acces: LAN uniquement (192.168.1.0/24)
-- Schema: `sql/001_init_schema.sql`
+- Schema ORM de reference: `prisma/schema.prisma`
+- Bootstrap / compatibilite homelab: `sql/001_init_schema.sql`, `sql/002_add_auth_fields.sql`, `sql/003_security_hardening.sql`
 
 ### Application Next.js
 
@@ -53,7 +54,7 @@ Tablee est une application web responsive de planification familiale de repas, r
 ```
 tablee/
 ├── docs/                          # Documentation projet
-├── sql/                           # Migrations SQL manuelles
+├── sql/                           # Bootstrap et compatibilite PostgreSQL
 ├── prisma/
 │   └── schema.prisma              # Schema Prisma (source de verite ORM)
 ├── src/
@@ -129,13 +130,14 @@ tablee/
 
 ### NextAuth.js v5 (Auth.js)
 
-Provider retenu: **Credentials** (email + mot de passe).
+Providers retenus: **Credentials** (email + mot de passe) et **Google OAuth**.
 
 Fonctionnement:
 
 - inscription via Server Action qui cree le `profile` en base
 - mot de passe hashe avec `bcrypt`
 - connexion via NextAuth Credentials provider
+- connexion Google avec liaison a un `profile` existant si l'email correspond
 - session geree cote serveur via JWT ou session DB (a definir)
 - middleware Next.js pour proteger les routes `(app)/`
 
@@ -157,16 +159,13 @@ Fonctionnement:
 
 ### Approche
 
-- Le schema SQL initial a deja ete execute manuellement (`sql/001_init_schema.sql`)
-- Prisma est utilise en mode **introspection** pour generer le schema depuis la base existante
-- Les migrations futures seront gerees via `prisma migrate`
+- `prisma/schema.prisma` est la reference de l'application
+- les scripts `sql/*.sql` existent pour le bootstrap homelab et les rattrapages de compatibilite
+- les migrations futures doivent privilegier Prisma, avec SQL manuel seulement pour les index/contraintes non supportes
 
 ### Commandes cles
 
 ```bash
-# Generer le schema Prisma depuis la base existante
-npx prisma db pull
-
 # Generer le client Prisma
 npx prisma generate
 
@@ -199,6 +198,8 @@ Toutes les operations metier doivent etre scopees par `family_id`. L'isolation s
 - les queries Prisma incluent toujours un filtre `family_id`
 - aucune donnee d'une famille ne doit fuiter vers une autre
 - les FK composites en base empechent les references inter-familles
+- les medias de recettes ne doivent jamais etre servis sans verification explicite de la famille active
+- les points sensibles (auth, invites, import IA) doivent etre limites par un rate limiting Postgres
 
 ### Helper d'autorisation
 

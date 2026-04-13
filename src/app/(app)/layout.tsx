@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getResolvedFamilyMemberships } from "@/lib/auth-utils";
 import { AppBrand } from "@/components/layout/app-brand";
 import { FamilySwitcher } from "@/components/layout/family-switcher";
 import { NavLinks, BottomNav } from "@/components/layout/nav-links";
@@ -17,33 +17,12 @@ export default async function AppLayout({
 
   const profileId = session.user.id;
 
-  // Get user families
-  const memberships = await prisma.family_members.findMany({
-    where: { profile_id: profileId },
-    include: { families: true },
-  });
+  const { memberships, activeFamilyId } =
+    await getResolvedFamilyMemberships(profileId);
 
   // No families -> onboarding
   if (memberships.length === 0) {
     redirect("/onboarding");
-  }
-
-  const prefs = await prisma.profile_preferences.findUnique({
-    where: { profile_id: profileId },
-  });
-
-  // No active family -> set first one
-  if (!prefs?.active_family_id) {
-    await prisma.profile_preferences.upsert({
-      where: { profile_id: profileId },
-      create: {
-        profile_id: profileId,
-        active_family_id: memberships[0].families.id,
-      },
-      update: {
-        active_family_id: memberships[0].families.id,
-      },
-    });
   }
 
   const families = memberships.map((m) => ({
@@ -51,8 +30,6 @@ export default async function AppLayout({
     name: m.families.name,
     role: m.role,
   }));
-
-  const activeFamilyId = prefs?.active_family_id ?? memberships[0].families.id;
 
   return (
     <div className="flex min-h-svh flex-col md:min-h-screen md:flex-row">

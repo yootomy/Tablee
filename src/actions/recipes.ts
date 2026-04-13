@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import { getMealWeekHref } from "@/lib/calendar";
+import { parseIngredientQuantity } from "@/lib/ingredient-quantity";
 
 type ActionResult =
   | { success: true; recipeId?: string }
@@ -84,32 +85,6 @@ function parseJsonField<T>(value: FormDataEntryValue | null): T | null {
   } catch {
     return null;
   }
-}
-
-function parseIngredientQuantity(quantity: string) {
-  const trimmed = quantity.trim();
-
-  if (!trimmed) {
-    return {
-      quantity_numeric: null,
-      raw_quantity_text: null,
-    };
-  }
-
-  const normalized = trimmed.replace(",", ".");
-  const isNumeric = /^\d+(\.\d+)?$/.test(normalized);
-
-  if (!isNumeric) {
-    return {
-      quantity_numeric: null,
-      raw_quantity_text: trimmed,
-    };
-  }
-
-  return {
-    quantity_numeric: normalized,
-    raw_quantity_text: null,
-  };
 }
 
 function parseRecipePayload(formData: FormData) {

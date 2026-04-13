@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveFamily } from "@/lib/auth-utils";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { AppPageHeader } from "@/components/layout/app-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { resolveMediaUrl } from "@/lib/media-url";
+import { resolveRecipeMediaUrl } from "@/lib/media-url";
 import {
   CalendarDays,
   ChefHat,
@@ -21,13 +22,7 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const prefs = await prisma.profile_preferences.findUnique({
-    where: { profile_id: session.user.id },
-  });
-
-  if (!prefs?.active_family_id) redirect("/onboarding");
-
-  const familyId = prefs.active_family_id;
+  const { familyId } = await requireActiveFamily();
 
   const [family, upcomingMeals, recipeCount, recentRecipes, pendingShoppingItems, totalShoppingItems, memberCount] =
     await Promise.all([
@@ -130,7 +125,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {recentRecipes.map((recipe) => {
-                  const imageUrl = resolveMediaUrl(recipe.image_url);
+                  const imageUrl = resolveRecipeMediaUrl(recipe.id, recipe.image_url);
 
                   return (
                     <Link

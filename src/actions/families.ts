@@ -5,10 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  getResolvedFamilyMemberships,
   requireActiveFamily,
   requireActiveFamilyAdmin,
   requireAuth,
 } from "@/lib/auth-utils";
+import { assertRateLimit, RateLimitExceededError } from "@/lib/rate-limit";
+import { getClientIpFromCurrentRequest } from "@/lib/request-context";
 import {
   formatInviteCode,
   generateInviteCode,
@@ -99,6 +102,7 @@ async function persistFamily(
 
 export async function createFamily(formData: FormData) {
   const profileId = await requireAuth();
+  const clientIp = await getClientIpFromCurrentRequest();
 
   const parsed = createFamilySchema.safeParse({
     name: formData.get("name"),
@@ -111,6 +115,33 @@ export async function createFamily(formData: FormData) {
 
   const { name, locationName } = parsed.data;
 
+  try {
+    await Promise.all([
+      assertRateLimit({
+        scope: "family-create:profile",
+        identifier: profileId,
+        limit: Number(process.env.FAMILY_CREATE_PROFILE_LIMIT ?? 5),
+        windowMs: 24 * 60 * 60 * 1000,
+        message:
+          "Tu as déjà créé plusieurs familles aujourd'hui. Réessaie demain si besoin.",
+      }),
+      assertRateLimit({
+        scope: "family-create:ip",
+        identifier: clientIp,
+        limit: Number(process.env.FAMILY_CREATE_IP_LIMIT ?? 10),
+        windowMs: 24 * 60 * 60 * 1000,
+        message:
+          "Trop de créations de famille depuis cette connexion aujourd'hui. Réessaie demain.",
+      }),
+    ]);
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return { success: false, error: error.message };
+    }
+
+    throw error;
+  }
+
   await persistFamily(profileId, name, locationName);
 
   redirect("/dashboard");
@@ -120,6 +151,7 @@ export async function joinFamilyWithCode(
   formData: FormData,
 ): Promise<ActionResult> {
   const profileId = await requireAuth();
+  const clientIp = await getClientIpFromCurrentRequest();
 
   const parsed = joinFamilySchema.safeParse({
     code: formData.get("code"),
@@ -127,6 +159,33 @@ export async function joinFamilyWithCode(
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  try {
+    await Promise.all([
+      assertRateLimit({
+        scope: "family-join:profile",
+        identifier: profileId,
+        limit: Number(process.env.FAMILY_JOIN_PROFILE_LIMIT ?? 12),
+        windowMs: 60 * 60 * 1000,
+        message:
+          "Tu as essayé trop de codes d'invitation récemment. Réessaie dans un moment.",
+      }),
+      assertRateLimit({
+        scope: "family-join:ip",
+        identifier: clientIp,
+        limit: Number(process.env.FAMILY_JOIN_IP_LIMIT ?? 20),
+        windowMs: 60 * 60 * 1000,
+        message:
+          "Trop de tentatives avec des codes d'invitation depuis cette connexion. Réessaie dans un moment.",
+      }),
+    ]);
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return { success: false, error: error.message };
+    }
+
+    throw error;
   }
 
   const normalizedCode = normalizeInviteCode(parsed.data.code);
@@ -223,6 +282,7 @@ export async function createFamilyInvite(
   }>
 > {
   const { profileId, familyId } = await requireActiveFamilyAdmin();
+  const clientIp = await getClientIpFromCurrentRequest();
 
   const parsed = createInviteSchema.safeParse({
     roleToGrant: formData.get("roleToGrant"),
@@ -237,6 +297,41 @@ export async function createFamilyInvite(
   const { roleToGrant, maxUses, expiresInDays } = parsed.data;
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+  try {
+    await Promise.all([
+      assertRateLimit({
+        scope: "family-invite:profile",
+        identifier: profileId,
+        limit: Number(process.env.FAMILY_INVITE_PROFILE_LIMIT ?? 30),
+        windowMs: 60 * 60 * 1000,
+        message:
+          "Tu as généré beaucoup de codes récemment. Réessaie dans un moment.",
+      }),
+      assertRateLimit({
+        scope: "family-invite:family",
+        identifier: familyId,
+        limit: Number(process.env.FAMILY_INVITE_FAMILY_LIMIT ?? 60),
+        windowMs: 60 * 60 * 1000,
+        message:
+          "Cette famille a généré trop de codes récemment. Réessaie dans un moment.",
+      }),
+      assertRateLimit({
+        scope: "family-invite:ip",
+        identifier: clientIp,
+        limit: Number(process.env.FAMILY_INVITE_IP_LIMIT ?? 60),
+        windowMs: 60 * 60 * 1000,
+        message:
+          "Trop de créations d'invitation depuis cette connexion. Réessaie dans un moment.",
+      }),
+    ]);
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return { success: false, error: error.message };
+    }
+
+    throw error;
+  }
 
   const code = generateInviteCode();
 
@@ -493,16 +588,8 @@ export async function switchFamily(familyId: string) {
 
 export async function getUserFamilies() {
   const profileId = await requireAuth();
-
-  const memberships = await prisma.family_members.findMany({
-    where: { profile_id: profileId },
-    include: { families: true },
-    orderBy: { joined_at: "asc" },
-  });
-
-  const prefs = await prisma.profile_preferences.findUnique({
-    where: { profile_id: profileId },
-  });
+  const { memberships, activeFamilyId } =
+    await getResolvedFamilyMemberships(profileId);
 
   return {
     families: memberships.map((membership) => ({
@@ -510,7 +597,7 @@ export async function getUserFamilies() {
       name: membership.families.name,
       role: membership.role,
     })),
-    activeFamilyId: prefs?.active_family_id ?? null,
+    activeFamilyId,
   };
 }
 

@@ -6,11 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { findRecipeMediaFile } from "@/lib/recipe-media-files";
 import {
   getRecipeMediaFilename,
-  RECIPE_MEDIA_ROUTE_PREFIX,
 } from "@/lib/recipe-media-storage";
 
 type RouteContext = {
-  params: Promise<{ filename: string }>;
+  params: Promise<{ id: string }>;
 };
 
 function getContentType(filename: string) {
@@ -37,34 +36,25 @@ export async function GET(_request: Request, context: RouteContext) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { filename } = await context.params;
-  const safeFilename = getRecipeMediaFilename(filename);
-  const owningRecipe = await prisma.recipes.findFirst({
+  const { id } = await context.params;
+
+  const recipe = await prisma.recipes.findFirst({
     where: {
+      id,
       family_id: familyId,
-      OR: [
-        {
-          image_url: {
-            endsWith: `${RECIPE_MEDIA_ROUTE_PREFIX}/${safeFilename}`,
-          },
-        },
-        {
-          image_url: {
-            endsWith: `/imported/recipes/${safeFilename}`,
-          },
-        },
-      ],
+      archived_at: null,
     },
     select: {
-      id: true,
+      image_url: true,
     },
   });
 
-  if (!owningRecipe) {
+  if (!recipe?.image_url) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const filePath = await findRecipeMediaFile(safeFilename);
+  const filename = getRecipeMediaFilename(recipe.image_url);
+  const filePath = await findRecipeMediaFile(filename);
 
   if (!filePath) {
     return new NextResponse("Not found", { status: 404 });

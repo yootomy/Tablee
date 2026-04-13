@@ -1,7 +1,15 @@
 "use server";
 
 import { requireActiveFamily } from "@/lib/auth-utils";
-import { importRecipeFromSocialUrl } from "@/lib/recipe-import";
+import {
+  getImportProvider,
+  importRecipeFromSocialUrl,
+} from "@/lib/recipe-import";
+import {
+  createRecipeImportJob,
+  markRecipeImportJobCompleted,
+  markRecipeImportJobFailed,
+} from "@/lib/recipe-import-jobs";
 import {
   createRecipeRecord,
   revalidateRecipeSurfaces,
@@ -23,7 +31,23 @@ export async function importRecipeFromUrl(
     return { success: false, error: "Ajoute un lien TikTok ou Instagram." };
   }
 
+  const provider = getImportProvider();
+  let importJobState:
+    | Awaited<ReturnType<typeof createRecipeImportJob>>
+    | null = null;
+
   try {
+    importJobState = await createRecipeImportJob({
+      familyId,
+      profileId,
+      provider,
+      sourceUrl: url.trim(),
+    });
+
+    if (importJobState.reusedRecipeId) {
+      return { success: true, recipeId: importJobState.reusedRecipeId };
+    }
+
     const draft = await importRecipeFromSocialUrl(url.trim());
     const recipe = await createRecipeRecord({
       familyId,
@@ -31,10 +55,34 @@ export async function importRecipeFromUrl(
       data: draftToPayload(draft),
     });
 
+    if (importJobState.job) {
+      await markRecipeImportJobCompleted({
+        jobId: importJobState.job.id,
+        recipeId: recipe.id,
+        metadata: {
+          confidence: draft.confidence,
+          warnings: draft.warnings,
+          imageUrl: draft.imageUrl,
+          source: draft.source,
+        },
+      });
+    }
+
     await revalidateRecipeSurfaces(recipe.id);
     return { success: true, recipeId: recipe.id };
   } catch (error) {
     const message = formatImportErrorMessage(error);
+
+    if (importJobState?.job) {
+      try {
+        await markRecipeImportJobFailed({
+          jobId: importJobState.job.id,
+          errorMessage: message,
+        });
+      } catch {
+        // best-effort only
+      }
+    }
 
     return { success: false, error: message };
   }
