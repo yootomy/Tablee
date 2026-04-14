@@ -50,6 +50,8 @@ const defaultValues = {
   imageUrl: "",
   ingredients: [],
   steps: [blankStep()],
+  dietaryTags: [] as string[],
+  allergenFlags: [] as string[],
 };
 
 function getIngredientQuantityLabel(ingredient: IngredientInput) {

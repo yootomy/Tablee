@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveFamily } from "@/lib/auth-utils";
+import { resolveFamilyEntitlements } from "@/lib/family-billing";
 import { getPreferredLocationId } from "@/lib/location-preferences";
 import { resolveRecipeMediaUrl } from "@/lib/media-url";
 import { formatDuration } from "@/lib/formatters";
+import { computeDietaryConflicts } from "@/lib/dietary";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { RecipeSourceViewerDialog } from "@/components/recipes/recipe-source-viewer-dialog";
 import { RecipeDetailClient } from "@/components/recipes/recipe-detail-client";
@@ -18,6 +20,7 @@ import {
   ExternalLink,
   Pencil,
   ArrowLeft,
+  TriangleAlert,
 } from "lucide-react";
 
 type RecipeDetailPageProps = {
@@ -30,7 +33,7 @@ export default async function RecipeDetailPage({
   const { familyId, profileId } = await requireActiveFamily();
   const { id } = await params;
 
-  const [recipe, locations, familyContextPreferences] = await Promise.all([
+  const [recipe, locations, familyContextPreferences, entitlements, familyMembersWithPrefs] = await Promise.all([
     prisma.recipes.findFirst({
       where: { id, family_id: familyId, archived_at: null },
       include: {
@@ -54,9 +57,30 @@ export default async function RecipeDetailPage({
         last_selected_location_id: true,
       },
     }),
+    resolveFamilyEntitlements(familyId),
+    prisma.family_members.findMany({
+      where: { family_id: familyId },
+      select: {
+        profiles_family_members_profile_idToprofiles: { select: { display_name: true } },
+        member_dietary_preferences: { select: { type: true, value: true } },
+      },
+    }),
   ]);
 
   if (!recipe) notFound();
+
+  const dietaryConflicts = entitlements.isPremiumActive
+    ? computeDietaryConflicts(
+        recipe,
+        familyMembersWithPrefs.flatMap((m) =>
+          m.member_dietary_preferences.map((pref) => ({
+            memberName: m.profiles_family_members_profile_idToprofiles.display_name,
+            type: pref.type,
+            value: pref.value,
+          })),
+        ),
+      )
+    : [];
 
   const totalMinutes =
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
@@ -150,6 +174,31 @@ export default async function RecipeDetailPage({
           </div>
         ) : null}
       </AppPageHeader>
+
+      {/* Alertes alimentaires */}
+      {dietaryConflicts.length > 0 ? (
+        <div className="space-y-2">
+          {dietaryConflicts.map((conflict) => (
+            <div
+              key={`${conflict.type}:${conflict.value}`}
+              className={
+                conflict.type === "allergen"
+                  ? "flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/8 px-3.5 py-2.5 text-sm text-destructive"
+                  : "flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800"
+              }
+            >
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {conflict.type === "allergen"
+                  ? `Contient ${conflict.label}`
+                  : `Non ${conflict.label.toLowerCase()}`}
+                {" · "}
+                Affecte&nbsp;: {conflict.memberNames.join(", ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {/* Contenu principal */}
       <RecipeDetailClient

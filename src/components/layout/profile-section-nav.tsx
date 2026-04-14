@@ -8,6 +8,7 @@ const links = [
   { href: "/profile", label: "Membres", exact: true },
   { href: "/profile/locations", label: "Lieux" },
   { href: "/profile/billing", label: "Abonnement" },
+  { href: "/profile/dietary", label: "Alimentaire" },
 ];
 
 export function ProfileSectionNav({ inverse = false }: { inverse?: boolean }) {

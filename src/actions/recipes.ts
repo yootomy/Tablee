@@ -65,6 +65,8 @@ const recipePayloadSchema = z.object({
     .array(ingredientSchema)
     .min(1, "Ajoutez au moins un ingrédient"),
   steps: z.array(stepSchema).min(1, "Ajoutez au moins une étape"),
+  dietaryTags: z.array(z.string()).optional().default([]),
+  allergenFlags: z.array(z.string()).optional().default([]),
 });
 
 function parseOptionalInteger(value: FormDataEntryValue | null) {
@@ -300,6 +302,8 @@ export async function createRecipeRecord(input: {
         servings: input.data.servings,
         source_url: input.data.sourceUrl,
         image_url: input.data.imageUrl,
+        dietary_tags: input.data.dietaryTags ?? [],
+        allergen_flags: input.data.allergenFlags ?? [],
       },
     });
 
@@ -335,4 +339,46 @@ export async function revalidateRecipeSurfaces(recipeId: string) {
   revalidatePath("/recipes");
   revalidatePath("/dashboard");
   revalidatePath(`/recipes/${recipeId}`);
+}
+
+export async function updateRecipeDietaryTags(
+  formData: FormData,
+): Promise<void> {
+  const { familyId, profileId } = await requireActiveFamily();
+  const recipeId = formData.get("recipeId");
+
+  if (typeof recipeId !== "string") {
+    throw new Error("Recette introuvable.");
+  }
+
+  const existing = await prisma.recipes.findFirst({
+    where: { id: recipeId, family_id: familyId, archived_at: null },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    throw new Error("Recette introuvable.");
+  }
+
+  const ALL_REGIME_VALUES = ["vegetarian", "vegan", "gluten_free", "halal", "pescatarian"];
+  const ALL_ALLERGEN_VALUES = ["lactose", "gluten", "eggs", "peanuts", "nuts", "seafood", "soy"];
+
+  const dietaryTags = ALL_REGIME_VALUES.filter(
+    (v) => formData.get(`regime_${v}`) === "on",
+  );
+  const allergenFlags = ALL_ALLERGEN_VALUES.filter(
+    (v) => formData.get(`allergen_${v}`) === "on",
+  );
+
+  await prisma.recipes.update({
+    where: { id: recipeId },
+    data: {
+      dietary_tags: dietaryTags,
+      allergen_flags: allergenFlags,
+      updated_by_profile_id: profileId,
+    },
+  });
+
+  revalidatePath(`/recipes/${recipeId}`);
+  revalidatePath(`/recipes/${recipeId}/edit`);
 }

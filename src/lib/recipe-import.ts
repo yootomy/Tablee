@@ -90,6 +90,8 @@ const recipeImportResponseSchema = z.object({
     .min(1),
   warnings: z.array(z.string().trim().min(1)).optional().default([]),
   confidence: z.number().min(0).max(1).nullable().optional(),
+  dietaryTags: z.array(z.string().trim().min(1)).optional().default([]),
+  allergenFlags: z.array(z.string().trim().min(1)).optional().default([]),
 });
 
 type SocialPlatform = "tiktok" | "instagram";
@@ -224,6 +226,18 @@ const geminiRecipeJsonSchema = {
       description:
         "Niveau de confiance global entre 0 et 1. null si le modèle ne peut pas l'estimer.",
     },
+    dietaryTags: {
+      type: "array",
+      description:
+        "Tags alimentaires de la recette. Inclure uniquement les valeurs certaines parmi : vegetarian, vegan, gluten_free, halal, pescatarian.",
+      items: { type: "string" },
+    },
+    allergenFlags: {
+      type: "array",
+      description:
+        "Allergènes présents dans la recette. Inclure uniquement les valeurs certaines parmi : lactose, gluten, eggs, peanuts, nuts, seafood, soy.",
+      items: { type: "string" },
+    },
   },
   required: [
     "title",
@@ -235,6 +249,8 @@ const geminiRecipeJsonSchema = {
     "steps",
     "warnings",
     "confidence",
+    "dietaryTags",
+    "allergenFlags",
   ],
 } as const;
 
@@ -1228,6 +1244,8 @@ function buildGeminiRecipeImportPrompt(input: {
     "Ta mission est de reconstituer un brouillon de recette exploitable par un humain.",
     "Tu dois utiliser tous les signaux disponibles : les images, l'audio si le média en contient, le texte visible à l'écran, la description sociale, les tags et les métadonnées du post.",
     "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning.",
+    "Pour dietaryTags, inclure uniquement les valeurs parmi : vegetarian, vegan, gluten_free, halal, pescatarian.",
+    "Pour allergenFlags, inclure uniquement les valeurs parmi : lactose, gluten, eggs, peanuts, nuts, seafood, soy.",
     "Ne renvoie que le JSON demandé par le schéma.",
     "",
     `Métadonnées sociales : ${JSON.stringify(input.metadata, null, 2)}`,
@@ -1419,10 +1437,12 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
                 "Ta mission est de reconstituer un brouillon de recette exploitable par un humain. " +
                 "Tu dois utiliser tous les signaux disponibles: métadonnées sociales, description, audio si disponible, et texte visible dans les visuels. " +
                 "Réponds uniquement avec un JSON valide contenant exactement les clés: " +
-                "title, description, prepTimeMinutes, cookTimeMinutes, servings, ingredients, steps, warnings, confidence. " +
+                "title, description, prepTimeMinutes, cookTimeMinutes, servings, ingredients, steps, warnings, confidence, dietaryTags, allergenFlags. " +
                 "Si une information est incertaine, propose la meilleure estimation raisonnable et ajoute un warning. " +
                 "Les ingrédients doivent contenir: name, quantity, unit, note. " +
-                "Les étapes doivent contenir: instruction.",
+                "Les étapes doivent contenir: instruction. " +
+                "Pour dietaryTags, inclure uniquement les valeurs certaines parmi : vegetarian, vegan, gluten_free, halal, pescatarian. " +
+                "Pour allergenFlags, inclure uniquement les valeurs certaines parmi : lactose, gluten, eggs, peanuts, nuts, seafood, soy.",
             },
           ],
         },
@@ -1440,6 +1460,8 @@ async function analyzeRecipeFromMediaWithOpenAI(input: {
                 "- La description doit être propre et lisible dans une app familiale.\n" +
                 "- Les temps sont en minutes.\n" +
                 "- Les quantités peu fiables doivent aller dans warnings.\n" +
+                "- Pour dietaryTags, utiliser uniquement : vegetarian, vegan, gluten_free, halal, pescatarian.\n" +
+                "- Pour allergenFlags, utiliser uniquement : lactose, gluten, eggs, peanuts, nuts, seafood, soy.\n" +
                 "- Ne renvoie rien d'autre que le JSON.",
             },
             ...input.visuals.map((visual) => ({
@@ -1487,6 +1509,8 @@ function normalizeImportedRecipe(input: {
       typeof input.analysis.confidence === "number"
         ? Number(input.analysis.confidence.toFixed(2))
         : null,
+    dietaryTags: input.analysis.dietaryTags ?? [],
+    allergenFlags: input.analysis.allergenFlags ?? [],
     source: {
       platform: input.metadata.platform,
       creatorName: input.metadata.creatorName,

@@ -137,8 +137,9 @@ model family_members {
   meal_plans_meal_plans_family_id_responsible_profile_idTofamily_members          meal_plans[]     @relation("meal_plans_family_id_responsible_profile_idTofamily_members")
   recipes_recipes_family_id_created_by_profile_idTofamily_members                 recipes[]        @relation("recipes_family_id_created_by_profile_idTofamily_members")
   recipes_recipes_family_id_updated_by_profile_idTofamily_members                 recipes[]        @relation("recipes_family_id_updated_by_profile_idTofamily_members")
-  shopping_items_shopping_items_family_id_completed_by_profile_idTofamily_members shopping_items[] @relation("shopping_items_family_id_completed_by_profile_idTofamily_members")
-  shopping_items_shopping_items_family_id_created_by_profile_idTofamily_members   shopping_items[] @relation("shopping_items_family_id_created_by_profile_idTofamily_members")
+  shopping_items_shopping_items_family_id_completed_by_profile_idTofamily_members shopping_items[]               @relation("shopping_items_family_id_completed_by_profile_idTofamily_members")
+  shopping_items_shopping_items_family_id_created_by_profile_idTofamily_members   shopping_items[]               @relation("shopping_items_family_id_created_by_profile_idTofamily_members")
+  member_dietary_preferences                                                       member_dietary_preferences[]
 
   @@unique([family_id, profile_id])
   @@index([profile_id], map: "idx_family_members_profile_id")
@@ -266,6 +267,8 @@ model recipes {
   servings                                                               Int?
   source_url                                                             String?
   image_url                                                              String?
+  dietary_tags                                                           String[]             @default([])
+  allergen_flags                                                         String[]             @default([])
   archived_at                                                            DateTime?            @db.Timestamptz(6)
   created_at                                                             DateTime             @default(now()) @db.Timestamptz(6)
   updated_at                                                             DateTime             @default(now()) @db.Timestamptz(6)
@@ -323,6 +326,18 @@ model request_rate_limits {
 
   @@unique([scope, identifier, window_start], map: "idx_request_rate_limits_scope_identifier_window")
   @@index([scope, identifier, last_hit_at(sort: Desc)], map: "idx_request_rate_limits_scope_identifier_last_hit")
+}
+
+model member_dietary_preferences {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  family_member_id String         @db.Uuid
+  type             String
+  value            String
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  family_members   family_members @relation(fields: [family_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([family_member_id, type, value])
+  @@index([family_member_id], map: "idx_member_dietary_preferences_member_id")
 }
 
 model recipe_import_jobs {

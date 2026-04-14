@@ -149,6 +149,8 @@ function draftToPayload(draft: Awaited<ReturnType<typeof importRecipeFromSocialU
     imageUrl: draft.imageUrl || undefined,
     ingredients: draft.ingredients,
     steps: draft.steps,
+    dietaryTags: draft.dietaryTags ?? [],
+    allergenFlags: draft.allergenFlags ?? [],
   };
 }
 

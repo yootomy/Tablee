@@ -19,6 +19,8 @@ export type RecipeFormDraft = {
   imageUrl: string;
   ingredients: RecipeIngredientDraft[];
   steps: RecipeStepDraft[];
+  dietaryTags: string[];
+  allergenFlags: string[];
 };
 
 export type ImportedRecipeDraft = RecipeFormDraft & {
