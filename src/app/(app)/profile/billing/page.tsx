@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireActiveFamily } from "@/lib/auth-utils";
 import {
-  getAiQuotaHeadline,
   getPlanLabel,
   resolveFamilyEntitlements,
 } from "@/lib/family-billing";
@@ -66,6 +65,17 @@ function getImportStatusLabel(status: string) {
   }
 }
 
+function formatSourceUrl(url: string) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const host = hostname.replace(/^www\./, "");
+    const path = pathname.length > 1 ? pathname.slice(0, 30) + (pathname.length > 30 ? "…" : "") : "";
+    return host + path;
+  } catch {
+    return url.slice(0, 40) + (url.length > 40 ? "…" : "");
+  }
+}
+
 export default async function BillingPage() {
   const { familyId, role } = await requireActiveFamily();
 
@@ -75,7 +85,7 @@ export default async function BillingPage() {
       select: { id: true, name: true },
     }),
     resolveFamilyEntitlements(familyId),
-    getRecentRecipeImportJobsForFamily(familyId, 12),
+    getRecentRecipeImportJobsForFamily(familyId, 5),
   ]);
 
   const priceSummary = getPriceSummaryForMemberCount(entitlements.memberCount);
@@ -85,9 +95,7 @@ export default async function BillingPage() {
       ? formatMoney(entitlements.currentPriceEur)
       : formatMoney(priceSummary.priceEur);
   const scheduledTierMessage = entitlements.scheduledTierChange
-    ? `Votre prochain renouvellement passera à ${formatMoney(
-        entitlements.scheduledTierChange.nextPriceEur,
-      )} car votre famille compte maintenant ${entitlements.memberCount} membres.`
+    ? `Prochain renouvellement à ${formatMoney(entitlements.scheduledTierChange.nextPriceEur)} (${entitlements.memberCount} membres).`
     : null;
 
   const managementCard = (
@@ -104,7 +112,7 @@ export default async function BillingPage() {
             Premium Famille (5+ membres) – 8,99 CHF/mois
           </p>
           <p className="text-sm text-muted-foreground">
-            Le palier suit automatiquement la taille de la famille au prochain renouvellement.
+            Le palier s&apos;ajuste automatiquement au prochain renouvellement.
           </p>
         </div>
 
@@ -125,7 +133,7 @@ export default async function BillingPage() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Seuls les admins de la famille peuvent gérer la facturation.
+            Seuls les admins peuvent gérer la facturation.
           </p>
         )}
       </CardContent>
@@ -137,7 +145,7 @@ export default async function BillingPage() {
       <AppPageHeader
         eyebrow="Mon profil"
         title={family?.name ?? "Famille"}
-        description="Pilote le plan Premium de la famille, les quotas IA et le suivi des imports."
+        description="Plan Premium, quotas IA et historique des imports."
         badges={
           <>
             <span className="inline-flex rounded-full bg-white/15 px-2.5 py-1 text-xs text-white/90">
@@ -165,111 +173,74 @@ export default async function BillingPage() {
       </AppPageHeader>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Sidebar — première dans le DOM pour mobile, droite sur lg+ */}
+        {/* Sidebar — premier dans le DOM pour mobile, droite sur lg+ */}
         <div className="space-y-4 lg:order-last">
           {managementCard}
         </div>
 
         {/* Contenu principal */}
         <div className="space-y-4">
-          {/* Plan actuel */}
+          {/* Plan actuel + Quotas — en liste compacte */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Plan actuel</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-0">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Offre
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {getPlanLabel(entitlements)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Prix
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {premiumPriceLabel}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Statut
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {getStatusLabel(entitlements.status)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Quota IA
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {getAiQuotaHeadline(entitlements)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm text-muted-foreground">
+            <CardContent className="pt-0">
+              <ul className="divide-y">
+                <li className="flex items-center justify-between gap-4 pb-3">
+                  <span className="text-sm text-muted-foreground">Offre</span>
+                  <span className="text-sm font-semibold">{getPlanLabel(entitlements)}</span>
+                </li>
+                <li className="flex items-center justify-between gap-4 py-3">
+                  <span className="text-sm text-muted-foreground">Statut</span>
+                  <span className="text-sm font-semibold">{getStatusLabel(entitlements.status)}</span>
+                </li>
+                <li className="flex items-center justify-between gap-4 py-3">
+                  <span className="text-sm text-muted-foreground">Prix</span>
+                  <span className="text-sm font-semibold">{premiumPriceLabel}</span>
+                </li>
                 {entitlements.plan === "premium" && entitlements.trialEndsAt ? (
-                  <p>Essai gratuit jusqu&apos;au {formatDate(entitlements.trialEndsAt)}.</p>
+                  <li className="flex items-center justify-between gap-4 py-3">
+                    <span className="text-sm text-muted-foreground">Essai gratuit jusqu&apos;au</span>
+                    <span className="text-sm font-semibold">{formatDate(entitlements.trialEndsAt)}</span>
+                  </li>
                 ) : null}
                 {entitlements.plan === "premium" && entitlements.currentPeriodEndsAt ? (
-                  <p>
-                    Prochaine échéance le {formatDate(entitlements.currentPeriodEndsAt)}
-                    {entitlements.cancelAtPeriodEnd ? " (annulation déjà programmée)." : "."}
-                  </p>
+                  <li className="flex items-center justify-between gap-4 py-3">
+                    <span className="text-sm text-muted-foreground">Prochain renouvellement</span>
+                    <span className="text-sm font-semibold">
+                      {formatDate(entitlements.currentPeriodEndsAt)}
+                      {entitlements.cancelAtPeriodEnd ? " (annulé)" : ""}
+                    </span>
+                  </li>
                 ) : null}
-                {entitlements.plan === "free" ? (
-                  <p>
-                    Le Premium débloque plus d&apos;imports IA, l&apos;historique complet et la
-                    relance des imports échoués.
-                  </p>
+                <li className="flex items-center justify-between gap-4 py-3">
+                  <span className="text-sm text-muted-foreground">Imports ce mois</span>
+                  <span className="text-sm font-semibold">
+                    {entitlements.aiUsage.familyRolling30DayUsed} / {entitlements.aiLimits.familyRolling30Day}
+                  </span>
+                </li>
+                {entitlements.aiUsage.familyRolling24hRemaining !== null ? (
+                  <li className="flex items-center justify-between gap-4 pt-3">
+                    <span className="text-sm text-muted-foreground">Restants aujourd&apos;hui</span>
+                    <span className="text-sm font-semibold">{entitlements.aiUsage.familyRolling24hRemaining}</span>
+                  </li>
                 ) : null}
-                {scheduledTierMessage ? <p>{scheduledTierMessage}</p> : null}
-                {!stripeReady ? (
-                  <p className="text-destructive">
-                    Stripe n&apos;est pas encore configuré sur le serveur. Le plan est prêt côté
-                    app, mais la souscription ne peut pas encore s&apos;ouvrir.
-                  </p>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
+              </ul>
 
-          {/* Quotas d'imports IA */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quotas d&apos;imports IA</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 pt-0 lg:grid-cols-3">
-              <div className="rounded-2xl border border-border/70 bg-background p-3 sm:p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Utilisation 30j
+              {scheduledTierMessage ? (
+                <p className="mt-3 text-sm text-muted-foreground">{scheduledTierMessage}</p>
+              ) : null}
+              {entitlements.plan === "free" ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Le Premium débloque plus d&apos;imports IA, l&apos;historique complet et la relance des imports échoués.
                 </p>
-                <p className="mt-1 text-sm font-semibold">
-                  {entitlements.aiUsage.familyRolling30DayUsed}/{entitlements.aiLimits.familyRolling30Day}
+              ) : null}
+              {!stripeReady ? (
+                <p className="mt-3 text-sm text-destructive">
+                  Stripe n&apos;est pas encore configuré sur le serveur.
                 </p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background p-3 sm:p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Reste 30j
-                </p>
-                <p className="mt-1 text-sm font-semibold">
-                  {entitlements.aiUsage.familyRolling30DayRemaining}
-                </p>
-              </div>
-              <div className="col-span-2 rounded-2xl border border-border/70 bg-background p-3 sm:p-4 lg:col-span-1">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Reste aujourd&apos;hui
-                </p>
-                <p className="mt-1 text-sm font-semibold">
-                  {entitlements.aiUsage.familyRolling24hRemaining ?? "Non applicable"}
-                </p>
-              </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -282,7 +253,7 @@ export default async function BillingPage() {
               {!entitlements.features.importHistory ? (
                 <EmptyState
                   title="Historique réservé au Premium"
-                  description="Passe au Premium pour suivre les imports, voir les warnings et relancer les échecs."
+                  description="Passe au Premium pour suivre les imports et relancer les échecs."
                   action={
                     role === "admin" && stripeReady ? (
                       <BillingActionButton
@@ -299,55 +270,47 @@ export default async function BillingPage() {
                   description="Les prochains imports IA de la famille apparaîtront ici."
                 />
               ) : (
-                <div className="space-y-3">
+                <ul className="divide-y">
                   {importJobs.map((job) => {
                     const metadata =
                       typeof job.metadata === "object" && job.metadata !== null
-                        ? (job.metadata as {
-                            confidence?: number;
-                            warnings?: string[];
-                          })
+                        ? (job.metadata as { confidence?: number; warnings?: string[] })
                         : {};
                     const confidenceLabel =
                       typeof metadata.confidence === "number"
                         ? `${Math.round(metadata.confidence * 100)}%`
                         : null;
-                    const warnings = Array.isArray(metadata.warnings)
-                      ? metadata.warnings
-                      : [];
+                    const warnings = Array.isArray(metadata.warnings) ? metadata.warnings : [];
 
                     return (
-                      <div
-                        key={job.id}
-                        className="rounded-2xl border border-border/70 bg-background p-4"
-                      >
-                        <div className="flex flex-col gap-3">
-                          <div className="min-w-0 space-y-1">
-                            <p className="truncate text-sm font-semibold text-foreground">
-                              {job.source_url}
+                      <li key={job.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {formatSourceUrl(job.source_url)}
                             </p>
-                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                               <span>{getImportStatusLabel(job.status)}</span>
-                              <span>
-                                {new Date(job.created_at).toLocaleDateString("fr-CH")}
-                              </span>
-                              {confidenceLabel ? <span>Confiance {confidenceLabel}</span> : null}
+                              <span>{new Date(job.created_at).toLocaleDateString("fr-CH")}</span>
+                              {confidenceLabel ? <span>{confidenceLabel}</span> : null}
                             </div>
                             {warnings.length > 0 ? (
-                              <p className="text-xs text-muted-foreground">
-                                Warnings : {warnings.join(" • ")}
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {warnings.join(" · ")}
                               </p>
                             ) : null}
                             {job.error_message ? (
-                              <p className="text-xs text-destructive">{job.error_message}</p>
+                              <p className="mt-0.5 text-xs text-destructive">{job.error_message}</p>
                             ) : null}
                           </div>
+                        </div>
 
-                          <div className="flex flex-wrap gap-2">
+                        {(job.recipe_id || job.status === "failed") ? (
+                          <div className="flex gap-2">
                             {job.recipe_id ? (
                               <Link
                                 href={`/recipes/${job.recipe_id}`}
-                                className={buttonVariants({ size: "sm", variant: "outline", className: "flex-1 justify-center sm:flex-none" })}
+                                className={buttonVariants({ size: "sm", variant: "outline", className: "flex-1 justify-center" })}
                               >
                                 Ouvrir la recette
                               </Link>
@@ -356,11 +319,11 @@ export default async function BillingPage() {
                               <RetryRecipeImportButton jobId={job.id} />
                             ) : null}
                           </div>
-                        </div>
-                      </div>
+                        ) : null}
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               )}
             </CardContent>
           </Card>
