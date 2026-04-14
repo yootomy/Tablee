@@ -48,7 +48,7 @@ export default async function FamilyLocationsPage() {
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <AppPageHeader
-        eyebrow="Mon profil"
+        eyebrow="Ma famille"
         title={family?.name ?? "Famille"}
         description="Centralise les lieux utilisés par les repas et les courses pour garder une organisation simple."
         badges={
