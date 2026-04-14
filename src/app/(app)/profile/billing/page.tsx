@@ -90,6 +90,48 @@ export default async function BillingPage() {
       )} car votre famille compte maintenant ${entitlements.memberCount} membres.`
     : null;
 
+  const managementCard = (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Gestion de l&apos;abonnement</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-0">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Premium Famille (1 à 4 membres) – 6,99 CHF/mois
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Premium Famille (5+ membres) – 8,99 CHF/mois
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Le palier suit automatiquement la taille de la famille au prochain renouvellement.
+          </p>
+        </div>
+
+        {role === "admin" ? (
+          <div className="flex flex-col gap-2">
+            {entitlements.isPremiumActive ? (
+              <BillingActionButton
+                actionType="portal"
+                label="Gérer l'abonnement"
+                variant="outline"
+              />
+            ) : (
+              <BillingActionButton
+                actionType="checkout"
+                label="Passer au Premium"
+              />
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Seuls les admins de la famille peuvent gérer la facturation.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <AppPageHeader
@@ -124,13 +166,14 @@ export default async function BillingPage() {
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
+          {/* Plan actuel */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Plan actuel</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     Offre
                   </p>
@@ -138,7 +181,7 @@ export default async function BillingPage() {
                     {getPlanLabel(entitlements)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     Prix
                   </p>
@@ -146,7 +189,7 @@ export default async function BillingPage() {
                     {premiumPriceLabel}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     Statut
                   </p>
@@ -154,7 +197,7 @@ export default async function BillingPage() {
                     {getStatusLabel(entitlements.status)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     Quota IA
                   </p>
@@ -191,28 +234,32 @@ export default async function BillingPage() {
             </CardContent>
           </Card>
 
+          {/* Gestion abonnement — visible uniquement sur mobile (sous Plan actuel) */}
+          <div className="xl:hidden">{managementCard}</div>
+
+          {/* Quotas d'imports IA */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Quotas d&apos;imports IA</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 pt-0 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-border/70 bg-background p-4">
+            <CardContent className="grid grid-cols-2 gap-3 pt-0 xl:grid-cols-3">
+              <div className="rounded-2xl border border-border/70 bg-background p-3 sm:p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Utilisation 30 jours
+                  Utilisation 30j
                 </p>
                 <p className="mt-1 text-sm font-semibold">
                   {entitlements.aiUsage.familyRolling30DayUsed}/{entitlements.aiLimits.familyRolling30Day}
                 </p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-background p-4">
+              <div className="rounded-2xl border border-border/70 bg-background p-3 sm:p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Reste sur 30 jours
+                  Reste 30j
                 </p>
                 <p className="mt-1 text-sm font-semibold">
                   {entitlements.aiUsage.familyRolling30DayRemaining}
                 </p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-background p-4">
+              <div className="col-span-2 rounded-2xl border border-border/70 bg-background p-3 sm:p-4 xl:col-span-1">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                   Reste aujourd&apos;hui
                 </p>
@@ -223,6 +270,7 @@ export default async function BillingPage() {
             </CardContent>
           </Card>
 
+          {/* Historique des imports IA */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Historique des imports IA</CardTitle>
@@ -270,7 +318,7 @@ export default async function BillingPage() {
                         key={job.id}
                         className="rounded-2xl border border-border/70 bg-background p-4"
                       >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex flex-col gap-3">
                           <div className="min-w-0 space-y-1">
                             <p className="truncate text-sm font-semibold text-foreground">
                               {job.source_url}
@@ -278,7 +326,7 @@ export default async function BillingPage() {
                             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                               <span>{getImportStatusLabel(job.status)}</span>
                               <span>
-                                {new Date(job.created_at).toLocaleString("fr-CH")}
+                                {new Date(job.created_at).toLocaleDateString("fr-CH")}
                               </span>
                               {confidenceLabel ? <span>Confiance {confidenceLabel}</span> : null}
                             </div>
@@ -292,11 +340,11 @@ export default async function BillingPage() {
                             ) : null}
                           </div>
 
-                          <div className="flex shrink-0 flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {job.recipe_id ? (
                               <Link
                                 href={`/recipes/${job.recipe_id}`}
-                                className={buttonVariants({ size: "sm", variant: "outline" })}
+                                className={buttonVariants({ size: "sm", variant: "outline", className: "flex-1 justify-center sm:flex-none" })}
                               >
                                 Ouvrir la recette
                               </Link>
@@ -315,44 +363,9 @@ export default async function BillingPage() {
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Gestion de l&apos;abonnement</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-              <p className="text-sm text-muted-foreground">
-                Premium Famille (1 à 4 membres) – 6,99 CHF/mois
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Premium Famille (5+ membres) – 8,99 CHF/mois
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Le palier suit automatiquement la taille de la famille au prochain renouvellement.
-              </p>
-
-              {role === "admin" ? (
-                <div className="flex flex-col gap-2">
-                  {entitlements.isPremiumActive ? (
-                    <BillingActionButton
-                      actionType="portal"
-                      label="Gérer l'abonnement"
-                      variant="outline"
-                    />
-                  ) : (
-                    <BillingActionButton
-                      actionType="checkout"
-                      label="Passer au Premium"
-                    />
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Seuls les admins de la famille peuvent gérer la facturation.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        {/* Sidebar — visible uniquement sur xl */}
+        <div className="hidden space-y-4 xl:block">
+          {managementCard}
         </div>
       </div>
     </div>
