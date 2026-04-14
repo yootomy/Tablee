@@ -25,7 +25,7 @@ export function ProfileSectionNav({ inverse = false }: { inverse?: boolean }) {
             key={link.href}
             href={link.href}
             className={cn(
-              "rounded-full border px-4 py-2.5 text-sm font-medium transition-all md:px-3.5 md:py-1.5",
+              "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all",
               inverse
                 ? isActive
                   ? "border-white/20 bg-white text-primary shadow-sm"

@@ -83,6 +83,22 @@ export default async function FamilyLocationsPage() {
 
       {/* Contenu */}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* Sidebar ajout — première dans le DOM pour mobile, droite sur lg+ */}
+        <Card className="lg:order-last">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Plus className="size-4" />
+              Ajouter un lieu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="mb-3 text-sm text-muted-foreground">
+              Ajoute seulement le nom utile pour les repas et les courses.
+            </p>
+            <CreateLocationForm />
+          </CardContent>
+        </Card>
+
         {/* Lieux existants */}
         <Card>
           <CardHeader className="pb-3">
@@ -148,21 +164,6 @@ export default async function FamilyLocationsPage() {
           </CardContent>
         </Card>
 
-        {/* Sidebar : ajout */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Plus className="size-4" />
-              Ajouter un lieu
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="mb-3 text-sm text-muted-foreground">
-              Ajoute seulement le nom utile pour les repas et les courses.
-            </p>
-            <CreateLocationForm />
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

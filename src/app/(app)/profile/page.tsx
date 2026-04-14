@@ -98,7 +98,55 @@ export default async function ProfilePage() {
 
       {/* Contenu */}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Membres */}
+        {/* Sidebar — premier dans le DOM pour mobile, poussé à droite sur lg+ */}
+        {role === "admin" ? (
+          <div className="space-y-4 lg:order-last">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <UserPlus className="size-4" />
+                  Inviter un membre
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <InviteMemberForm />
+              </CardContent>
+            </Card>
+
+            {activeInvites.length > 0 ? (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    Invitations actives
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      ({activeInvites.length})
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ul className="divide-y">
+                    {activeInvites.map((invite) => (
+                      <li key={invite.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                        <div className="text-sm">
+                          <p className="font-medium">Code •••• {invite.code_last4}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatRole(invite.role_to_grant)} • {invite.uses_count}/{invite.max_uses} util.
+                            {invite.expires_at
+                              ? ` • exp. ${new Date(invite.expires_at).toLocaleDateString("fr-CH")}`
+                              : ""}
+                          </p>
+                        </div>
+                        <RevokeFamilyInviteButton inviteId={invite.id} />
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Liste membres */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
@@ -117,7 +165,7 @@ export default async function ProfilePage() {
             ) : (
               <ul className="divide-y">
                 {sortedMembers.map((member) => (
-                  <li key={member.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                  <li key={member.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -150,54 +198,6 @@ export default async function ProfilePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {role === "admin" ? (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <UserPlus className="size-4" />
-                  Inviter un membre
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <InviteMemberForm />
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {role === "admin" && activeInvites.length > 0 ? (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  Invitations actives
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({activeInvites.length})
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="divide-y">
-                  {activeInvites.map((invite) => (
-                    <li key={invite.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                      <div className="text-sm">
-                        <p className="font-medium">Code •••• {invite.code_last4}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatRole(invite.role_to_grant)} • {invite.uses_count}/{invite.max_uses} util.
-                          {invite.expires_at
-                            ? ` • exp. ${new Date(invite.expires_at).toLocaleDateString("fr-CH")}`
-                            : ""}
-                        </p>
-                      </div>
-                      <RevokeFamilyInviteButton inviteId={invite.id} />
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
       </div>
     </div>
   );

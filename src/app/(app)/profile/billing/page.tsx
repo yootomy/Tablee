@@ -164,7 +164,13 @@ export default async function BillingPage() {
         </div>
       </AppPageHeader>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* Sidebar — première dans le DOM pour mobile, droite sur lg+ */}
+        <div className="space-y-4 lg:order-last">
+          {managementCard}
+        </div>
+
+        {/* Contenu principal */}
         <div className="space-y-4">
           {/* Plan actuel */}
           <Card>
@@ -172,7 +178,7 @@ export default async function BillingPage() {
               <CardTitle className="text-base">Plan actuel</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
-              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-3 sm:p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     Offre
@@ -234,15 +240,12 @@ export default async function BillingPage() {
             </CardContent>
           </Card>
 
-          {/* Gestion abonnement — visible uniquement sur mobile (sous Plan actuel) */}
-          <div className="xl:hidden">{managementCard}</div>
-
           {/* Quotas d'imports IA */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Quotas d&apos;imports IA</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 pt-0 xl:grid-cols-3">
+            <CardContent className="grid grid-cols-2 gap-3 pt-0 lg:grid-cols-3">
               <div className="rounded-2xl border border-border/70 bg-background p-3 sm:p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                   Utilisation 30j
@@ -259,7 +262,7 @@ export default async function BillingPage() {
                   {entitlements.aiUsage.familyRolling30DayRemaining}
                 </p>
               </div>
-              <div className="col-span-2 rounded-2xl border border-border/70 bg-background p-3 sm:p-4 xl:col-span-1">
+              <div className="col-span-2 rounded-2xl border border-border/70 bg-background p-3 sm:p-4 lg:col-span-1">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                   Reste aujourd&apos;hui
                 </p>
@@ -361,11 +364,6 @@ export default async function BillingPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* Sidebar — visible uniquement sur xl */}
-        <div className="hidden space-y-4 xl:block">
-          {managementCard}
         </div>
       </div>
     </div>
