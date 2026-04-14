@@ -10,7 +10,7 @@ const familyLinks = [
   { href: "/profile/billing", label: "Abonnement" },
 ];
 
-const accountLinks = [{ href: "/profile/compte", label: "Mon compte" }];
+const accountLinks = [{ href: "/profile/compte", label: "Mon compte", exact: false }];
 
 function isActive(pathname: string, href: string, exact: boolean): boolean {
   if (exact) {
