@@ -16,7 +16,7 @@ export function AppBrand({ compact = false, className }: AppBrandProps) {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/tablee/logo-tablee-nobg.png"
+          src="/logo-tablee-nobg.png"
           alt="Logo Tablee"
           className={cn("object-contain", compact ? "size-[22px]" : "size-[30px]")}
         />

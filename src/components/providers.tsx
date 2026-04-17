@@ -11,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem={false}
       disableTransitionOnChange
     >
-      <SessionProvider basePath="/tablee/api/auth">{children}</SessionProvider>
+      <SessionProvider basePath="/api/auth">{children}</SessionProvider>
     </ThemeProvider>
   );
 }

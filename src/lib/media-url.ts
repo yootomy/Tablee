@@ -5,7 +5,7 @@ import {
   RECIPE_MEDIA_ROUTE_PREFIX,
 } from "@/lib/recipe-media-storage";
 
-const BASE_PATH = "/tablee";
+const LEGACY_BASE_PATH = "/tablee";
 
 function hasProtocol(value: string) {
   return /^https?:\/\//i.test(value) || value.startsWith("data:");
@@ -18,23 +18,27 @@ export function resolveMediaUrl(value: string | null | undefined) {
     return null;
   }
 
-  if (
-    trimmed.includes("/imported/recipes/") ||
-    trimmed.includes(`${RECIPE_MEDIA_ROUTE_PREFIX}/`)
-  ) {
-    const filename = getRecipeMediaFilename(trimmed);
-    return `${BASE_PATH}${getRecipeMediaUrl(filename)}`;
-  }
-
-  if (hasProtocol(trimmed) || trimmed.startsWith(BASE_PATH)) {
+  if (hasProtocol(trimmed)) {
     return trimmed;
   }
 
-  if (trimmed.startsWith("/")) {
-    return `${BASE_PATH}${trimmed}`;
+  const normalized = trimmed.startsWith(LEGACY_BASE_PATH)
+    ? trimmed.slice(LEGACY_BASE_PATH.length) || "/"
+    : trimmed;
+
+  if (
+    normalized.includes("/imported/recipes/") ||
+    normalized.includes(`${RECIPE_MEDIA_ROUTE_PREFIX}/`)
+  ) {
+    const filename = getRecipeMediaFilename(normalized);
+    return getRecipeMediaUrl(filename);
   }
 
-  return `${BASE_PATH}/${trimmed.replace(/^\/+/, "")}`;
+  if (normalized.startsWith("/")) {
+    return normalized;
+  }
+
+  return `/${normalized.replace(/^\/+/, "")}`;
 }
 
 export function resolveRecipeMediaUrl(
@@ -51,7 +55,7 @@ export function resolveRecipeMediaUrl(
     trimmed.includes("/imported/recipes/") ||
     trimmed.includes(`${RECIPE_MEDIA_ROUTE_PREFIX}/`)
   ) {
-    return `${BASE_PATH}${getRecipeScopedMediaUrl(recipeId)}`;
+    return getRecipeScopedMediaUrl(recipeId);
   }
 
   return resolveMediaUrl(trimmed);

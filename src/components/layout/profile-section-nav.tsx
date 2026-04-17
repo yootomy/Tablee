@@ -14,18 +14,12 @@ const accountLinks = [{ href: "/profile/compte", label: "Mon compte", exact: fal
 
 function isActive(pathname: string, href: string, exact: boolean): boolean {
   if (exact) {
-    // Reconnaître /profile et /tablee/profile comme équivalents à /profile/membres
     if (href === "/profile/membres") {
-      return (
-        pathname === "/profile/membres" ||
-        pathname === "/tablee/profile/membres" ||
-        pathname === "/profile" ||
-        pathname === "/tablee/profile"
-      );
+      return pathname === "/profile/membres" || pathname === "/profile";
     }
-    return pathname === href || pathname === `/tablee${href}`;
+    return pathname === href;
   }
-  return pathname.startsWith(href) || pathname.startsWith(`/tablee${href}`);
+  return pathname.startsWith(href);
 }
 
 export function ProfileSectionNav({ inverse = false }: { inverse?: boolean }) {

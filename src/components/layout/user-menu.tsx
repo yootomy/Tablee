@@ -29,8 +29,8 @@ export function UserMenu({ name, compact = false }: UserMenuProps) {
   async function handleSignOut() {
     const callbackUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/tablee/login`
-        : "/tablee/login";
+        ? `${window.location.origin}/login`
+        : "/login";
 
     await signOut({ callbackUrl });
   }

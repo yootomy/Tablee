@@ -1,11 +1,11 @@
-const APP_BASE_PATH = "/tablee";
+const LEGACY_BASE_PATH = "/tablee";
 
 function normalizeBaseUrl(baseUrl: string) {
   const trimmed = baseUrl.trim().replace(/\/+$/, "");
 
-  return trimmed.endsWith(APP_BASE_PATH)
-    ? trimmed
-    : `${trimmed}${APP_BASE_PATH}`;
+  return trimmed.endsWith(LEGACY_BASE_PATH)
+    ? trimmed.slice(0, -LEGACY_BASE_PATH.length)
+    : trimmed;
 }
 
 export function getAppBaseUrl() {
@@ -24,4 +24,3 @@ export function buildAppUrl(pathname: string) {
   const normalizedPathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
   return `${getAppBaseUrl()}${normalizedPathname}`;
 }
-

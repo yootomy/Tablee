@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const APP_BASE_PATH = "/tablee";
+const LEGACY_BASE_PATH = "/tablee";
 const PUBLIC_PATHS = new Set([
   "/",
   "/login",
@@ -16,32 +16,20 @@ const PUBLIC_PATHS = new Set([
   "/window.svg",
 ]);
 
-function stripBasePath(pathname: string) {
-  if (pathname === APP_BASE_PATH) {
-    return "/";
-  }
-
-  return pathname.startsWith(APP_BASE_PATH)
-    ? pathname.slice(APP_BASE_PATH.length) || "/"
-    : pathname;
-}
-
-function withBasePath(pathname: string) {
-  if (pathname === "/") {
-    return `${APP_BASE_PATH}/`;
-  }
-
-  return pathname.startsWith(APP_BASE_PATH) ? pathname : `${APP_BASE_PATH}${pathname}`;
-}
-
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const normalizedPathname = stripBasePath(pathname);
+
+  if (pathname === LEGACY_BASE_PATH || pathname.startsWith(`${LEGACY_BASE_PATH}/`)) {
+    const redirectPath = pathname.slice(LEGACY_BASE_PATH.length) || "/";
+    const redirectUrl = new URL(redirectPath, request.nextUrl.origin);
+    redirectUrl.search = request.nextUrl.search;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
 
   if (
-    normalizedPathname.startsWith("/api/auth") ||
-    normalizedPathname.startsWith("/api/stripe/webhook") ||
-    PUBLIC_PATHS.has(normalizedPathname)
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/stripe/webhook") ||
+    PUBLIC_PATHS.has(pathname)
   ) {
     return NextResponse.next();
   }
@@ -51,8 +39,8 @@ export function proxy(request: NextRequest) {
     request.cookies.get("__Secure-authjs.session-token");
 
   if (!token) {
-    const loginUrl = new URL(withBasePath("/login"), request.nextUrl.origin);
-    loginUrl.searchParams.set("callbackUrl", withBasePath(normalizedPathname));
+    const loginUrl = new URL("/login", request.nextUrl.origin);
+    loginUrl.searchParams.set("callbackUrl", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
