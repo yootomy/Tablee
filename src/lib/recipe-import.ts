@@ -130,6 +130,13 @@ type TikTokPhotoEmbedPayload = {
   imageUrls: string[];
 };
 
+type TikTokVideoOEmbedResponse = {
+  title?: string;
+  author_name?: string;
+  author_unique_id?: string;
+  thumbnail_url?: string;
+};
+
 const geminiRecipeJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -725,6 +732,16 @@ function extractTikTokHashtags(textExtras: unknown) {
     .filter(Boolean);
 }
 
+function extractHashtagsFromText(value: string) {
+  return Array.from(
+    new Set(
+      Array.from(value.matchAll(/#([\p{L}\p{N}_-]+)/gu))
+        .map((match) => match[1]?.trim())
+        .filter((tag): tag is string => Boolean(tag)),
+    ),
+  );
+}
+
 function getFirstUrlFromCandidates(value: unknown) {
   if (typeof value === "string" && value.trim()) {
     return value.trim();
@@ -835,6 +852,36 @@ export function extractTikTokPhotoPayloadFromEmbedHtml(
   };
 }
 
+export function extractTikTokVideoPayloadFromOEmbed(
+  payload: TikTokVideoOEmbedResponse,
+  sourceUrl: string,
+): TikTokPhotoEmbedPayload {
+  const description = (payload.title || "").trim();
+  const thumbnailUrl = (payload.thumbnail_url || "").trim();
+
+  if (!thumbnailUrl) {
+    throw new Error("TikTok n'a pas fourni de miniature exploitable pour cette vidéo.");
+  }
+
+  const creatorName =
+    (payload.author_unique_id || "").trim() ||
+    (payload.author_name || "").trim();
+
+  return {
+    metadata: {
+      platform: "tiktok",
+      title: truncateSocialText(description || "Recette importée TikTok"),
+      description,
+      creatorName,
+      webpageUrl: sourceUrl,
+      thumbnailUrl,
+      durationSeconds: null,
+      tags: extractHashtagsFromText(description),
+    },
+    imageUrls: [thumbnailUrl],
+  };
+}
+
 async function getTikTokPhotoEmbedPayload(url: string) {
   const postId = extractTikTokPostId(url);
 
@@ -850,6 +897,34 @@ async function getTikTokPhotoEmbedPayload(url: string) {
   }
 
   return extractTikTokPhotoPayloadFromEmbedHtml(await response.text(), url);
+}
+
+async function getTikTokVideoOEmbedPayload(url: string) {
+  const oEmbedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+  const response = await fetchWithTimeout(
+    oEmbedUrl,
+    {
+      headers: SOCIAL_FETCH_HEADERS,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("TikTok a refusé l'accès à l'oEmbed de cette vidéo.");
+  }
+
+  return extractTikTokVideoPayloadFromOEmbed(
+    (await response.json()) as TikTokVideoOEmbedResponse,
+    url,
+  );
+}
+
+async function getTikTokVideoThumbnailFallback(url: string, cwd: string) {
+  const payload = await getTikTokVideoOEmbedPayload(url);
+
+  return {
+    metadata: payload.metadata,
+    sourceMedia: await downloadImageGallery(payload.imageUrls, cwd),
+  };
 }
 
 async function clearDownloadedSourceArtifacts(cwd: string) {
@@ -1531,15 +1606,35 @@ export async function importRecipeFromSocialUrl(url: string) {
   try {
     const resolvedUrl = await resolveSocialUrl(url);
     const provider = getImportProvider();
-    const photoPayload = isTikTokPhotoUrl(resolvedUrl)
-      ? await getTikTokPhotoEmbedPayload(resolvedUrl)
-      : null;
-    const metadata = photoPayload
-      ? photoPayload.metadata
-      : await getSocialMetadata(resolvedUrl, tempDir);
-    const sourceMedia = photoPayload
-      ? await downloadImageGallery(photoPayload.imageUrls, tempDir)
-      : await downloadSourceMedia(resolvedUrl, tempDir);
+    const platform = detectPlatform(resolvedUrl);
+    let metadata: SocialVideoMetadata;
+    let sourceMedia: DownloadedSocialMedia;
+
+    if (isTikTokPhotoUrl(resolvedUrl)) {
+      const photoPayload = await getTikTokPhotoEmbedPayload(resolvedUrl);
+      metadata = photoPayload.metadata;
+      sourceMedia = await downloadImageGallery(photoPayload.imageUrls, tempDir);
+    } else if (platform === "tiktok") {
+      try {
+        metadata = await getSocialMetadata(resolvedUrl, tempDir);
+        sourceMedia = await downloadSourceMedia(resolvedUrl, tempDir);
+      } catch (error) {
+        try {
+          const fallback = await getTikTokVideoThumbnailFallback(
+            resolvedUrl,
+            tempDir,
+          );
+          metadata = fallback.metadata;
+          sourceMedia = fallback.sourceMedia;
+        } catch {
+          throw error;
+        }
+      }
+    } else {
+      metadata = await getSocialMetadata(resolvedUrl, tempDir);
+      sourceMedia = await downloadSourceMedia(resolvedUrl, tempDir);
+    }
+
     const providersToTry = getProviderExecutionOrder(provider);
     let analysis: z.infer<typeof recipeImportResponseSchema> | null = null;
     let lastAnalysisError: unknown = null;

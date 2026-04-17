@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { extractTikTokPhotoPayloadFromEmbedHtml } from "@/lib/recipe-import";
+import {
+  extractTikTokPhotoPayloadFromEmbedHtml,
+  extractTikTokVideoPayloadFromOEmbed,
+} from "@/lib/recipe-import";
 
 describe("recipe-import", () => {
   it("parse un embed TikTok photo en métadonnées et galerie", () => {
@@ -55,5 +58,36 @@ describe("recipe-import", () => {
       "https://cdn.example/slide-1.jpg",
       "https://cdn.example/slide-2.jpg",
     ]);
+  });
+
+  it("convertit un oEmbed TikTok vidéo en fallback exploitable", () => {
+    const payload = extractTikTokVideoPayloadFromOEmbed(
+      {
+        title:
+          "High Protein Creamy Garlic Beef Pasta! 477 Calories par portion #pasta #mealprep #highprotein",
+        author_name: "Jalalsamfit",
+        author_unique_id: "jalalsamfit",
+        thumbnail_url: "https://cdn.example/tiktok-cover.jpg",
+      },
+      "https://www.tiktok.com/@jalalsamfit/video/7231243748905159962",
+    );
+
+    expect(payload.metadata.platform).toBe("tiktok");
+    expect(payload.metadata.creatorName).toBe("jalalsamfit");
+    expect(payload.metadata.webpageUrl).toBe(
+      "https://www.tiktok.com/@jalalsamfit/video/7231243748905159962",
+    );
+    expect(payload.metadata.thumbnailUrl).toBe(
+      "https://cdn.example/tiktok-cover.jpg",
+    );
+    expect(payload.metadata.description).toContain(
+      "High Protein Creamy Garlic Beef Pasta!",
+    );
+    expect(payload.metadata.tags).toEqual([
+      "pasta",
+      "mealprep",
+      "highprotein",
+    ]);
+    expect(payload.imageUrls).toEqual(["https://cdn.example/tiktok-cover.jpg"]);
   });
 });
